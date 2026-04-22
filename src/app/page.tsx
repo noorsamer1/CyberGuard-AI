@@ -3,7 +3,6 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { LandingAgentsExplainer } from "@/components/landing/landing-agents-explainer";
 import { LandingArchitecture } from "@/components/landing/landing-architecture";
 import { LandingAttackLabShowcase } from "@/components/landing/landing-attack-lab-showcase";
-import { LandingBridgeNav } from "@/components/landing/landing-bridge-nav";
 import { LandingCta } from "@/components/landing/landing-cta";
 import { LandingDashboardShowcase } from "@/components/landing/landing-dashboard-showcase";
 import { LandingFooter } from "@/components/landing/landing-footer";
@@ -39,7 +38,6 @@ export default function LandingPage() {
         <LandingHeader />
         <main className="relative z-[2]">
           <LandingHero />
-          <LandingBridgeNav />
           <div id="product" className="scroll-mt-[var(--landing-header-h)]">
             <LandingStats />
             <LandingTrustBar />

@@ -1,7 +1,6 @@
 "use client";
 
 import { LandingReveal } from "@/components/landing/landing-reveal";
-import { useLandingScroll } from "@/components/landing/landing-scroll-context";
 import { cn } from "@/lib/utils";
 
 const steps = [
@@ -52,54 +51,7 @@ const steps = [
   },
 ];
 
-function StaticPipeline() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {steps.map((s) => (
-        <article
-          key={s.kicker}
-          className={cn(
-            "rounded-2xl border border-border/50 bg-card/40 p-6 ring-1 ring-white/5 backdrop-blur-md",
-            s.ring,
-          )}
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{s.kicker}</p>
-          <h3 className="mt-2 font-[family-name:var(--font-display)] text-lg font-semibold text-foreground">{s.title}</h3>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.detail}</p>
-          <p className="mt-4 text-xs font-semibold text-cyan-200/90">{s.metric}</p>
-        </article>
-      ))}
-    </div>
-  );
-}
-
 export function LandingHowItWorksRail() {
-  const reduced = useLandingScroll()?.reducedMotion ?? false;
-
-  if (reduced) {
-    return (
-      <section id="how-it-works" className="landing-section relative z-10 scroll-mt-24">
-        <div className="mx-auto max-w-[var(--landing-max)] px-6 lg:px-8">
-          <LandingReveal mode="deep">
-            <p className="landing-eyebrow text-cyan-300/90">How it works</p>
-            <h2
-              id="how-heading"
-              className="mt-3 max-w-3xl font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
-            >
-              Five engineering stages, one continuous spine
-            </h2>
-            <p className="mt-4 max-w-2xl text-sm text-muted-foreground sm:text-base">
-              Reduced motion is on — the horizontal track is shown as a stacked grid instead.
-            </p>
-          </LandingReveal>
-          <div className="mt-10">
-            <StaticPipeline />
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section id="how-it-works" className="landing-section relative z-10 scroll-mt-24" aria-labelledby="how-heading">
       <div className="mx-auto max-w-[var(--landing-max)] px-6 lg:px-8">
@@ -112,68 +64,55 @@ export function LandingHowItWorksRail() {
             Five engineering stages, one continuous spine
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Scroll the track below to walk the pipeline in order. Each card mirrors a deployable slice of this repo
-            (ingest workers, rules, WebSocket fan-out, incidents, reporting). Full-page smooth scroll (Lenis) is paused
-            inside the track so horizontal gestures and shift+wheel work reliably.
+            Five deployable slices in this repo — each card is a real module boundary (ingest workers, rules engine,
+            WebSocket fan-out, incidents, reporting). No scroll tricks: scan the grid like an architecture wall.
           </p>
         </LandingReveal>
 
-        <div className="relative mt-10">
+        <div className="relative mt-12 lg:mt-14">
           <div
-            className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-12 bg-gradient-to-r from-background via-background/85 to-transparent sm:w-16"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-12 bg-gradient-to-l from-background via-background/85 to-transparent sm:w-16"
+            className="pointer-events-none absolute -inset-x-4 -top-8 bottom-0 -z-10 rounded-[2.5rem] bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,oklch(0.35_0.12_250_/_0.14),transparent_65%)] opacity-90 blur-2xl sm:-inset-x-8"
             aria-hidden
           />
 
-          <div
-            data-lenis-prevent
-            tabIndex={0}
-            role="list"
-            aria-label="Analyst pipeline stages — scroll horizontally"
-            className={cn(
-              "flex snap-x snap-mandatory gap-5 overflow-x-auto overflow-y-hidden pb-4 pt-1",
-              "scroll-smooth [-webkit-overflow-scrolling:touch]",
-              "outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              "[scrollbar-width:thin] [scrollbar-color:oklch(0.72_0.14_230_/_0.45)_transparent]",
-            )}
-          >
-            {steps.map((s) => (
-              <article
+          <ul className="grid list-none grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 xl:gap-7">
+            {steps.map((s, index) => (
+              <li
                 key={s.kicker}
-                role="listitem"
                 className={cn(
-                  "snap-center snap-always flex w-[min(88vw,22.5rem)] shrink-0 flex-col justify-between rounded-2xl border border-border/50 bg-card/55 p-6 shadow-inner shadow-black/25 ring-1 backdrop-blur-md sm:w-[min(72vw,24rem)] sm:p-7",
-                  s.ring,
+                  "group relative",
+                  index % 2 === 0 ? "xl:-translate-y-2" : "xl:translate-y-3",
                 )}
               >
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    {s.kicker}
-                  </p>
-                  <h3 className="mt-3 font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-foreground">
-                    {s.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.detail}</p>
-                </div>
-                <div
+                <article
                   className={cn(
-                    "mt-6 inline-flex w-fit items-center rounded-full border border-white/10 bg-gradient-to-r px-3 py-1 text-[11px] font-semibold text-foreground",
-                    s.accent,
+                    "flex h-full flex-col justify-between rounded-2xl border border-border/50 bg-card/60 p-6 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.65)] ring-1 ring-inset ring-white/[0.06] backdrop-blur-md transition-[transform,box-shadow,border-color] duration-300 ease-out",
+                    "hover:-translate-y-2 hover:border-cyan-500/25 hover:shadow-[0_28px_70px_-28px_rgba(0,0,0,0.75),0_0_0_1px_oklch(0.72_0.14_230_/_0.12)]",
+                    "motion-reduce:transform-none motion-reduce:hover:transform-none",
+                    s.ring,
                   )}
                 >
-                  {s.metric}
-                </div>
-              </article>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      {s.kicker}
+                    </p>
+                    <h3 className="mt-3 font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+                      {s.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.detail}</p>
+                  </div>
+                  <div
+                    className={cn(
+                      "mt-6 inline-flex w-fit items-center rounded-full border border-white/10 bg-gradient-to-r px-3 py-1 text-[11px] font-semibold text-foreground",
+                      s.accent,
+                    )}
+                  >
+                    {s.metric}
+                  </div>
+                </article>
+              </li>
             ))}
-          </div>
-
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            Drag the cards, use a trackpad swipe, or hold <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px]">Shift</kbd>{" "}
-            + mouse wheel to scroll sideways.
-          </p>
+          </ul>
         </div>
       </div>
     </section>
