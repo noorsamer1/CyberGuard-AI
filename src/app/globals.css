@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -126,5 +126,220 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Landing marquee — respects reduced motion via duplicate utility */
+@keyframes landing-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.landing-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: landing-marquee 50s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-marquee-track {
+    animation: none;
+  }
+}
+
+/* Hero ambient motion (CSS only — matches SSR and avoids hydration mismatch) */
+@keyframes landing-hero-glow {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+  33% {
+    opacity: 0.92;
+    transform: scale(1.03) translate(1%, -1%);
+  }
+  66% {
+    opacity: 0.88;
+    transform: scale(1.02) translate(-1%, 1%);
+  }
+}
+
+.landing-hero-glow-layer {
+  animation: landing-hero-glow 18s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-glow-layer {
+    animation: none;
+  }
+}
+
+/* —— Landing: full-page cyber atmosphere (CSS-only; respects reduced motion) —— */
+@keyframes landing-cyber-bg-shift {
+  0% {
+    opacity: 1;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    opacity: 0.92;
+    filter: hue-rotate(12deg);
+  }
+  100% {
+    opacity: 1;
+    filter: hue-rotate(0deg);
+  }
+}
+
+@keyframes landing-cyber-grid-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-48px, -24px, 0);
+  }
+}
+
+@keyframes landing-scanline-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+@keyframes landing-hud-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px oklch(0.75 0.14 230 / 0.25), 0 0 24px oklch(0.55 0.18 230 / 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 1px oklch(0.75 0.14 230 / 0.45), 0 0 36px oklch(0.55 0.18 250 / 0.2);
+  }
+}
+
+/* Landing layout tokens + root (marketing shell) */
+.landing-section {
+  padding-block: var(--landing-section-y-sm);
+}
+
+@media (min-width: 1024px) {
+  .landing-section {
+    padding-block: var(--landing-section-y-lg);
+  }
+}
+
+.landing-panel {
+  border-radius: var(--landing-radius-panel);
+  border: 1px solid oklch(1 0 0 / 12%);
+  background: oklch(0.18 0.02 260 / 0.55);
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 4%),
+    0 24px 48px oklch(0 0 0 / 35%);
+  backdrop-filter: blur(var(--landing-panel-blur));
+}
+
+.landing-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: oklch(0.78 0.08 230);
+}
+
+.landing-cyber-root {
+  position: relative;
+  isolation: isolate;
+  /* Sticky bridge sits below fixed header height (py-4 + row ~44px). */
+  --landing-header-h: 4.75rem;
+  --landing-section-y-sm: clamp(3.5rem, 8vw, 5rem);
+  --landing-section-y-lg: clamp(5rem, 12vw, 7.5rem);
+  --landing-panel-blur: 20px;
+  --landing-radius-panel: 1.125rem;
+  --landing-radius-hud: 1.35rem;
+  --landing-border-glow: oklch(0.72 0.14 230 / 0.35);
+  --landing-max: 76rem;
+  --landing-depth-1: 0 24px 80px -32px oklch(0 0 0 / 0.55);
+  --landing-depth-glow: 0 0 120px -40px oklch(0.72 0.14 230 / 0.22);
+}
+
+/* Optional body font on landing (set via Next font variable on root). */
+.landing-cyber-root.landing-type-body {
+  font-family: var(--font-landing-sans), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing-cyber-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 120% 70% at 50% -25%, oklch(0.38 0.14 250 / 0.28), transparent 55%),
+    radial-gradient(ellipse 50% 45% at 100% 30%, oklch(0.35 0.2 290 / 0.12), transparent 50%),
+    radial-gradient(ellipse 45% 40% at 0% 70%, oklch(0.32 0.12 200 / 0.1), transparent 45%);
+  animation: landing-cyber-bg-shift 22s ease-in-out infinite;
+}
+
+.landing-cyber-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(oklch(1 0 0 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(1 0 0 / 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 10%, transparent 70%);
+  animation: landing-cyber-grid-drift 48s linear infinite;
+}
+
+.landing-cyber-scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.12;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 2px,
+    oklch(0 0 0 / 0.35) 2px,
+    oklch(0 0 0 / 0.35) 3px
+  );
+  mix-blend-mode: overlay;
+  animation: landing-scanline-drift 6s linear infinite;
+}
+
+.landing-hud-card {
+  animation: landing-hud-pulse 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-cyber-root::before,
+  .landing-cyber-grid,
+  .landing-cyber-scanlines,
+  .landing-hud-card {
+    animation: none !important;
+  }
+
+  .landing-cyber-scanlines {
+    opacity: 0.06;
+  }
+}
+
+/* Landing: Lenis handles smoothness; keep scroll-padding for fixed header. */
+html.landing-snap-scroll {
+  scroll-padding-top: calc(var(--landing-header-h, 4.75rem) + 0.5rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.landing-snap-scroll {
+    scroll-behavior: auto;
   }
 }

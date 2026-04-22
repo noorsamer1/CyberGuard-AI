@@ -1,65 +1,61 @@
-import Image from "next/image";
+import { Plus_Jakarta_Sans } from "next/font/google";
 
-export default function Home() {
+import { LandingAgentsExplainer } from "@/components/landing/landing-agents-explainer";
+import { LandingArchitecture } from "@/components/landing/landing-architecture";
+import { LandingAttackLabShowcase } from "@/components/landing/landing-attack-lab-showcase";
+import { LandingBridgeNav } from "@/components/landing/landing-bridge-nav";
+import { LandingCta } from "@/components/landing/landing-cta";
+import { LandingDashboardShowcase } from "@/components/landing/landing-dashboard-showcase";
+import { LandingFooter } from "@/components/landing/landing-footer";
+import { LandingHeader } from "@/components/landing/landing-header";
+import { LandingHero } from "@/components/landing/landing-hero";
+import { LandingHowItWorksRail } from "@/components/landing/landing-how-it-works-rail";
+import { LandingMarquee } from "@/components/landing/landing-marquee";
+import { LandingMission } from "@/components/landing/landing-mission";
+import { LandingPillars } from "@/components/landing/landing-pillars";
+import { LandingScrollRoot } from "@/components/landing/landing-scroll-root";
+import { LandingStats } from "@/components/landing/landing-stats";
+import { LandingTrustBar } from "@/components/landing/landing-trust-bar";
+import { cn } from "@/lib/utils";
+
+const landingSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-landing-sans",
+  display: "swap",
+});
+
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div
+      className={cn(
+        "landing-cyber-root landing-type-body relative min-h-screen overflow-x-hidden bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,oklch(0.22_0.06_260)_0%,oklch(0.12_0.04_260)_42%,oklch(0.09_0.02_260)_100%)]",
+        landingSans.variable,
+      )}
+    >
+      <div className="landing-cyber-grid" aria-hidden />
+      <div className="landing-cyber-scanlines" aria-hidden />
+      <LandingScrollRoot>
+        <LandingHeader />
+        <main className="relative z-[2]">
+          <LandingHero />
+          <LandingBridgeNav />
+          <div id="product" className="scroll-mt-[var(--landing-header-h)]">
+            <LandingStats />
+            <LandingTrustBar />
+            <LandingMission />
+            <LandingPillars />
+          </div>
+          <LandingHowItWorksRail />
+          <LandingAttackLabShowcase />
+          <LandingDashboardShowcase />
+          <LandingAgentsExplainer />
+          <LandingArchitecture />
+          <LandingMarquee />
+          <LandingCta />
+        </main>
+        <LandingFooter />
+      </LandingScrollRoot>
     </div>
   );
 }
