@@ -49,13 +49,6 @@ class IncidentOut(BaseModel):
     events: list[EventOut] = Field(default_factory=list)
 
 
-class BriefingBenchmark(BaseModel):
-    average_score: float | None = None
-    latest_score: float | None = None
-    sessions_completed: int = 0
-    trend: str = "insufficient_data"
-
-
 class IncidentBriefingOut(BaseModel):
     incident_id: int
     mode: str
@@ -64,7 +57,6 @@ class IncidentBriefingOut(BaseModel):
     technical_findings: list[str] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)
     mitre_highlights: list[str] = Field(default_factory=list)
-    learning_benchmark: BriefingBenchmark
 
 
 def incident_to_out(inc, include_events: bool = True) -> IncidentOut:

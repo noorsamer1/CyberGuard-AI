@@ -227,3 +227,51 @@ def _has_grounded_evidence(event: Event, evidence: list[str]) -> bool:
         if needle and (needle in haystack or any(part and part in haystack for part in needle.split() if len(part) >= 5)):
             return True
     return False
+
+
+def request_ai_classification_for_alert(
+    db: Session,
+    *,
+    alert: Alert,
+    owner_id: int,
+) -> tuple[AIClassification | None, str]:
+    """Return AI classification for an alert, running the LLM once if missing.
+
+    The alert's rule-based severity is unchanged; this only creates advisory
+    ``AIClassification`` rows when enabled.
+
+    Args:
+        db: Database session.
+        alert: Alert row (caller must enforce tenant ownership).
+        owner_id: Expected alert/event owner.
+
+    Returns:
+        ``(classification, "")`` on success, or ``(None, error_code)`` where
+        ``error_code`` is one of: ``not_owner``, ``no_event``, ``ai_disabled``,
+        ``no_api_key``, ``classification_unavailable``.
+    """
+    if alert.owner_id != owner_id:
+        return None, "not_owner"
+
+    existing = get_alert_classification(db, alert, owner_id=owner_id)
+    if existing:
+        return existing, ""
+
+    if not alert.event_id:
+        return None, "no_event"
+
+    event = db.get(Event, alert.event_id)
+    if event is None or event.owner_id != owner_id:
+        return None, "no_event"
+
+    if not settings.ai_detection_enabled:
+        return None, "ai_disabled"
+
+    if not settings.openrouter_api_key:
+        return None, "no_api_key"
+
+    classify_events(db, [int(alert.event_id)])
+    item = get_alert_classification(db, alert, owner_id=owner_id)
+    if item:
+        return item, ""
+    return None, "classification_unavailable"

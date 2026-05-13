@@ -74,7 +74,7 @@ export default function LoginPage() {
               </div>
               <div className="flex items-center gap-2 rounded-md border border-border/50 bg-card/30 px-3 py-2 text-slate-200">
                 <Sparkles className="h-4 w-4 text-violet-300" />
-                Live attack simulation and learning-grade scoring
+                Live attack simulation in the Cyber Range
               </div>
             </div>
           </CardHeader>

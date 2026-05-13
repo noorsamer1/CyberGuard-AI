@@ -19,8 +19,11 @@ def list_incidents(
     severity: Optional[Severity] = None,
     q: Optional[str] = None,
     owner_id: Optional[int] = None,
+    load_events: bool = True,
 ) -> tuple[list[Incident], int]:
-    stmt = select(Incident).options(selectinload(Incident.events))
+    stmt = select(Incident)
+    if load_events:
+        stmt = stmt.options(selectinload(Incident.events))
     count_stmt = select(func.count()).select_from(Incident)
     conds = []
     if owner_id is not None:

@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.exercise_session import ExerciseSession
 from app.models.incident import Incident
-from app.schemas.incident import BriefingBenchmark, IncidentBriefingOut
+from app.schemas.incident import IncidentBriefingOut
 
 
 @dataclass(frozen=True)
@@ -17,10 +15,9 @@ class _Counts:
     high_or_critical: int
 
 
-def build_incident_briefing(db: Session, incident: Incident, mode: str) -> IncidentBriefingOut:
+def build_incident_briefing(_db: Session, incident: Incident, mode: str) -> IncidentBriefingOut:
     """Build a concise incident briefing for analyst or executive audiences."""
     counts = _count_incident_signals(incident)
-    benchmark = _build_learning_benchmark(db, incident.owner_id)
     mitre_ids = sorted({t.technique_id for t in _get_techniques(incident)})
 
     executive_summary = (
@@ -57,7 +54,6 @@ def build_incident_briefing(db: Session, incident: Incident, mode: str) -> Incid
         technical_findings=technical_findings,
         recommended_actions=recommended_actions,
         mitre_highlights=mitre_ids,
-        learning_benchmark=benchmark,
     )
 
 
@@ -66,39 +62,6 @@ def _count_incident_signals(incident: Incident) -> _Counts:
     unique_sources = len({event.source_ip for event in events if event.source_ip})
     high_or_critical = sum(1 for event in events if event.severity.value in {"high", "critical"})
     return _Counts(events=len(events), unique_sources=unique_sources, high_or_critical=high_or_critical)
-
-
-def _build_learning_benchmark(db: Session, owner_id: int | None) -> BriefingBenchmark:
-    if owner_id is None:
-        return BriefingBenchmark()
-
-    completed = db.scalars(
-        select(ExerciseSession.overall_score)
-        .where(
-            ExerciseSession.user_id == owner_id,
-            ExerciseSession.overall_score.is_not(None),
-        )
-        .order_by(ExerciseSession.completed_at.desc())
-        .limit(20)
-    ).all()
-    scores = [float(score) for score in completed if score is not None]
-    if not scores:
-        return BriefingBenchmark()
-
-    average = round(float(sum(scores)) / len(scores), 2)
-    latest = round(scores[0], 2)
-    if len(scores) >= 3 and latest >= average:
-        trend = "improving"
-    elif len(scores) >= 3 and latest < average:
-        trend = "declining"
-    else:
-        trend = "stable"
-    return BriefingBenchmark(
-        average_score=average,
-        latest_score=latest,
-        sessions_completed=len(scores),
-        trend=trend,
-    )
 
 
 def _get_techniques(incident: Incident):

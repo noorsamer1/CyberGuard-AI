@@ -18,7 +18,14 @@ from app.schemas.incident import (
     IncidentUpdate,
     incident_to_out,
 )
+from app.schemas.incident_portfolio import (
+    IncidentPortfolioReportOut,
+    PortfolioAIOut,
+    PortfolioReportRequest,
+)
+from app.core.config import settings
 from app.services import ai_service, briefing_service, incident_service, report_service
+from app.services import incident_portfolio_service
 from app.services.incident_service import get_incident
 from app.tasks.ai_tasks import analyze_incident_task
 from app.tasks.report_tasks import generate_incident_pdf_task
@@ -49,6 +56,51 @@ def list_incidents(
         total=total,
         page=pagination.page,
         page_size=pagination.page_size,
+    )
+
+
+@router.post("/portfolio-report", response_model=IncidentPortfolioReportOut)
+def post_portfolio_report(
+    user: CurrentUser,
+    body: PortfolioReportRequest,
+    db: Session = Depends(get_db),
+):
+    """Aggregate filtered incidents, deterministic charts, and optional AI narrative."""
+    raw = incident_portfolio_service.build_portfolio_payload(
+        db,
+        owner_id=user.id,
+        status=body.status,
+        severity=body.severity,
+        q=body.q,
+        max_items=body.max_items,
+    )
+    ai_error: str | None = None
+    ai_out: PortfolioAIOut | None = None
+
+    if int(raw["stats"].get("total_matching") or 0) == 0:
+        pass
+    elif not settings.openrouter_api_key:
+        ai_error = "OpenRouter API key is not configured; statistics and charts are still shown."
+    else:
+        ai_raw = ai_service.analyze_incident_portfolio(raw)
+        if ai_raw:
+            try:
+                ai_out = PortfolioAIOut.model_validate(ai_raw)
+            except Exception:
+                ai_error = "AI returned an unexpected shape; showing statistics only."
+        else:
+            ai_error = "AI analysis did not return a result; showing statistics only."
+
+    return IncidentPortfolioReportOut(
+        generated_at=raw["generated_at"],
+        filters=raw["filters"],
+        max_items=raw["max_items"],
+        truncated=raw["truncated"],
+        truncation_note=raw["truncation_note"],
+        stats=raw["stats"],
+        charts=raw["charts"],
+        ai=ai_out,
+        ai_error=ai_error,
     )
 
 

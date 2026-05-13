@@ -35,18 +35,3 @@ class ReportScheduleFrequency(str, enum.Enum):
     twice_daily = "twice_daily"
     daily = "daily"
     weekly = "weekly"
-
-
-class ExerciseSessionStatus(str, enum.Enum):
-    active = "active"
-    completed = "completed"
-    expired = "expired"
-    cancelled = "cancelled"
-
-
-class ExerciseActionType(str, enum.Enum):
-    acknowledge_alert = "acknowledge_alert"
-    resolve_alert = "resolve_alert"
-    escalate_incident = "escalate_incident"
-    add_note = "add_note"
-    request_hint = "request_hint"

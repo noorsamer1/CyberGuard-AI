@@ -16,7 +16,7 @@ const agents: readonly AgentCard[] = [
     name: "Attack Scenario Simulator",
     icon: Swords,
     detail:
-      "Curated bundles + Attack Lab UI fire the same ingestion and detection pipeline students will see in alerts/incidents.",
+      "Curated bundles + Attack Lab UI fire the same ingestion and detection pipeline operators see in alerts and incidents.",
   },
   {
     name: "MITRE ATT&CK Intelligence",
@@ -28,7 +28,7 @@ const agents: readonly AgentCard[] = [
     name: "Threat Report & Executive Briefing",
     icon: FileText,
     detail:
-      "Incident briefing endpoint distills technical and executive narratives plus learning benchmarks for stakeholder-ready storytelling.",
+      "Incident briefing endpoint distills technical and executive narratives for stakeholder-ready storytelling.",
   },
   {
     name: "Operator dashboard & UI copilot",

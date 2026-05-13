@@ -333,32 +333,15 @@ export default function IncidentDetailPage() {
                 <p className="text-xs uppercase tracking-wide text-cyan-300">Business impact</p>
                 <p className="mt-1 text-sm text-muted-foreground">{briefingQuery.data.business_impact}</p>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-md border border-border/50 p-3">
-                  <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
-                    Recommended actions
-                  </p>
-                  <ul className="space-y-1 text-sm text-muted-foreground">
-                    {briefingQuery.data.recommended_actions.map((item) => (
-                      <li key={item}>- {item}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="rounded-md border border-border/50 p-3">
-                  <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
-                    Learning benchmark
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Avg score: {briefingQuery.data.learning_benchmark.average_score ?? "—"} | Latest:{" "}
-                    {briefingQuery.data.learning_benchmark.latest_score ?? "—"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Completed sessions: {briefingQuery.data.learning_benchmark.sessions_completed}
-                  </p>
-                  <p className="text-sm text-cyan-300">
-                    Trend: {briefingQuery.data.learning_benchmark.trend}
-                  </p>
-                </div>
+              <div className="rounded-md border border-border/50 p-3">
+                <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  Recommended actions
+                </p>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  {briefingQuery.data.recommended_actions.map((item) => (
+                    <li key={item}>- {item}</li>
+                  ))}
+                </ul>
               </div>
             </>
           )}

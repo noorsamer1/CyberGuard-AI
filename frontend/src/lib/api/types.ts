@@ -98,11 +98,30 @@ export interface Incident {
   events: Event[];
 }
 
-export interface BriefingBenchmark {
-  average_score: number | null;
-  latest_score: number | null;
-  sessions_completed: number;
-  trend: string;
+export interface IncidentPortfolioAI {
+  executive_summary: string;
+  key_findings: string[];
+  risks: string[];
+  recommendations: string[];
+  themes: string[];
+}
+
+export interface IncidentPortfolioReport {
+  generated_at: string;
+  filters: { status: string | null; severity: string | null; q: string | null };
+  max_items: number;
+  truncated: boolean;
+  truncation_note: string | null;
+  stats: Record<string, unknown>;
+  charts: {
+    severity_bar: Array<{ name: string; count: number }>;
+    status_bar: Array<{ name: string; count: number }>;
+    weekly_line: Array<{ week_start: string; count: number }>;
+    rules_bar: Array<{ rule_name: string; count: number }>;
+    mitre_bar: Array<{ technique_id: string; label: string; count: number }>;
+  };
+  ai: IncidentPortfolioAI | null;
+  ai_error: string | null;
 }
 
 export interface IncidentBriefing {
@@ -113,7 +132,6 @@ export interface IncidentBriefing {
   technical_findings: string[];
   recommended_actions: string[];
   mitre_highlights: string[];
-  learning_benchmark: BriefingBenchmark;
 }
 
 export interface Paginated<T> {
@@ -217,74 +235,6 @@ export interface ReportSchedule {
   last_run_at: string | null;
   created_at: string;
   updated_at: string;
-}
-
-export type ExerciseSessionStatus = "active" | "completed" | "expired" | "cancelled";
-export type ExerciseActionType =
-  | "acknowledge_alert"
-  | "resolve_alert"
-  | "escalate_incident"
-  | "add_note"
-  | "request_hint";
-
-export interface ExerciseScenario {
-  id: string;
-  name: string;
-  description: string;
-  severity: string;
-  mitre_tactics: string[];
-  mitre_techniques: string[];
-  threat_actor: string;
-  estimated_alerts: number;
-  duration_minutes: number;
-}
-
-export interface ExerciseAction {
-  id: number;
-  session_id: number;
-  user_id: number;
-  action_type: ExerciseActionType;
-  target_type: string | null;
-  target_id: number | null;
-  notes: string | null;
-  created_at: string;
-}
-
-export interface ExerciseSession {
-  id: number;
-  user_id: number;
-  scenario_id: string;
-  status: ExerciseSessionStatus;
-  duration_minutes: number;
-  started_at: string;
-  ends_at: string;
-  completed_at: string | null;
-  overall_score: number | null;
-  detection_score: number | null;
-  analysis_score: number | null;
-  response_score: number | null;
-  reporting_score: number | null;
-  strengths: string | null;
-  weaknesses: string | null;
-  hints_used: number;
-  result_json: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
-  actions: ExerciseAction[];
-}
-
-export interface DoctorCoachRequest {
-  session_id: number;
-  question: string;
-  language: "en" | "ar";
-}
-
-export interface DoctorCoachResponse {
-  session_id: number;
-  diagnosis: string;
-  likely_gap: string;
-  coaching_steps: string[];
-  quick_quiz: string[];
 }
 
 export interface UIRecommendation {

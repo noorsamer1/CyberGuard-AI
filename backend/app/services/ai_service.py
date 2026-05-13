@@ -171,3 +171,87 @@ def _string_list(value: Any, max_items: int) -> list[str]:
         if text:
             out.append(text[:500])
     return out
+
+
+def analyze_incident_portfolio(portfolio_packet: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """Produce narrative sections grounded only in provided portfolio statistics.
+
+    Args:
+        portfolio_packet: Output-shaped dict containing ``filters``, ``generated_at``,
+            ``stats`` (including counts and optional sample titles).
+
+    Returns:
+        Dict matching :class:`PortfolioAIOut` fields, or ``None`` on failure / no API key.
+    """
+    if not settings.openrouter_api_key:
+        logger.info("OpenRouter API key not set; skipping portfolio AI")
+        return None
+
+    stats = portfolio_packet.get("stats") or {}
+    user_payload = {
+        "filters": portfolio_packet.get("filters"),
+        "generated_at": portfolio_packet.get("generated_at"),
+        "stats": {
+            "total_matching": stats.get("total_matching"),
+            "sample_size": stats.get("sample_size"),
+            "severity_counts": stats.get("severity_counts"),
+            "status_counts": stats.get("status_counts"),
+            "weekly_created": stats.get("weekly_created"),
+            "spike_last_period": stats.get("spike_last_period"),
+            "oldest_open": stats.get("oldest_open"),
+            "rule_counts": stats.get("rule_counts"),
+            "mitre_top": stats.get("mitre_top"),
+        },
+        "sample_titles": (stats.get("sample_titles") or [])[:35],
+    }
+
+    payload = {
+        "model": settings.openrouter_model,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a senior SOC manager writing an incident portfolio briefing. "
+                    "Respond with compact JSON only, no markdown fences. "
+                    "Use ONLY the numeric facts and lists in the user JSON. Do not invent "
+                    "incident counts, dates, or severities. If something is unknown, say so. "
+                    "Keys: executive_summary (3-6 sentences), key_findings (array of short "
+                    "strings), risks (array), recommendations (array, prefix items with P0:, "
+                    "P1:, or P2: by urgency), themes (array of short thematic labels). "
+                    "recommendations must be actionable and tied to the provided stats."
+                ),
+            },
+            {"role": "user", "content": json.dumps(user_payload, default=str)},
+        ],
+        "temperature": 0.25,
+    }
+    headers = {
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+        "HTTP-Referer": "https://cyberguard.local",
+        "X-Title": "CyberGuard AI",
+        "Content-Type": "application/json",
+    }
+    try:
+        with httpx.Client(timeout=90.0) as client:
+            r = client.post(OPENROUTER_URL, json=payload, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+            text = data["choices"][0]["message"]["content"].strip()
+            if text.startswith("```"):
+                parts = text.split("```", 2)
+                text = parts[1] if len(parts) > 1 else text
+                if text.startswith("json"):
+                    text = text[4:].strip()
+            parsed = json.loads(text)
+            if not isinstance(parsed, dict):
+                return None
+            return {
+                "executive_summary": str(parsed.get("executive_summary", ""))[:8000],
+                "key_findings": _string_list(parsed.get("key_findings"), max_items=12),
+                "risks": _string_list(parsed.get("risks"), max_items=12),
+                "recommendations": _string_list(parsed.get("recommendations"), max_items=15),
+                "themes": _string_list(parsed.get("themes"), max_items=10),
+            }
+    except Exception as e:
+        logger.warning("Portfolio AI analysis failed: %s", e)
+        return None

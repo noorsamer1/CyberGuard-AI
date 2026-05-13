@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, LogOut, Search, Bell as BellIcon, FileWarning, FlaskConical, GraduationCap, LayoutDashboard, X } from "lucide-react";
+import { Bell, LogOut, Search, Bell as BellIcon, FileWarning, FlaskConical, LayoutDashboard, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -21,7 +21,6 @@ const QUICK_LINKS = [
   { label: "Alert center", href: "/alerts", icon: BellIcon },
   { label: "Incidents", href: "/incidents", icon: FileWarning },
   { label: "Attack Lab", href: "/attack-lab", icon: FlaskConical },
-  { label: "Learning Lab", href: "/learning", icon: GraduationCap },
 ];
 
 export function AppHeader() {

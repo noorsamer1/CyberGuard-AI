@@ -15,7 +15,7 @@ const footerProduct = [
 ] as const;
 
 const footerResources: readonly { href: string; label: string; external?: boolean }[] = [
-  { href: "/learning", label: "Learning Lab" },
+  { href: "/reports", label: "Reports" },
   { href: apiDocsUrl(), label: "OpenAPI docs", external: true },
   { href: "/login", label: "Sign in" },
   { href: "/signup", label: "Sign up" },

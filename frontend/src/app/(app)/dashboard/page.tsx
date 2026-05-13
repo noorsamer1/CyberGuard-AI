@@ -16,7 +16,7 @@ import {
   FileWarning,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
 import { SeverityBadge } from "@/components/common/severity-badge";
@@ -79,6 +79,16 @@ export default function DashboardPage() {
     queryKey: ["dashboard-ui-recommendations"],
     queryFn: () => apiFetch<UIRecommendation[]>("/dashboard/ui-recommendations"),
   });
+
+  const uiRecommendationsFiltered = useMemo(() => {
+    const drop = new Set(["training-cadence", "learning-session", "low-training-cadence"]);
+    return (uiRecommendations ?? []).filter(
+      (r) =>
+        !drop.has(r.id) &&
+        !r.action_href.toLowerCase().includes("/learning") &&
+        !r.action_href.toLowerCase().includes("/exercise"),
+    );
+  }, [uiRecommendations]);
 
   const workQueue = charts?.work_queue;
   const anomalySignals = charts?.anomaly_signals;
@@ -293,7 +303,10 @@ export default function DashboardPage() {
           <CardTitle className="text-base">UI/UX advisor agent</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {(uiRecommendations ?? []).map((rec) => (
+          {uiRecommendationsFiltered.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No advisor tips for the current posture.</p>
+          ) : null}
+          {uiRecommendationsFiltered.map((rec) => (
             <div
               key={rec.id}
               className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/50 px-3 py-2 text-sm"

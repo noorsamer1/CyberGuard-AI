@@ -224,11 +224,7 @@ function HeroCopy() {
         <Link href="#dashboard" className="font-medium text-cyan-300 underline-offset-4 hover:underline">
           operator cockpit
         </Link>
-        , then export evidence or grade analysts in the{" "}
-        <Link href="/learning" className="font-medium text-cyan-300 underline-offset-4 hover:underline">
-          Learning Lab
-        </Link>
-        .
+        , and export evidence when investigations close.
       </p>
       <div className="mt-8 grid max-w-xl grid-cols-3 gap-3 sm:flex sm:flex-wrap sm:gap-2">
         {[

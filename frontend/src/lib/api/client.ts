@@ -41,8 +41,14 @@ export async function apiFetch<T>(
   if (!res.ok) {
     let msg = res.statusText;
     try {
-      const body = await res.json();
-      msg = body.message || body.detail || JSON.stringify(body);
+      const body = await res.json() as Record<string, unknown>;
+      const detail = body.detail;
+      if (typeof body.message === "string") msg = body.message;
+      else if (typeof detail === "string") msg = detail;
+      else if (detail && typeof detail === "object" && "message" in detail) {
+        const m = (detail as { message?: unknown }).message;
+        msg = typeof m === "string" ? m : JSON.stringify(detail);
+      } else msg = JSON.stringify(body);
     } catch {
       /* ignore */
     }

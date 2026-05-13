@@ -17,8 +17,8 @@ const proofPoints = [
   },
   {
     icon: BookOpen,
-    title: "Teaching-native flows",
-    body: "Attack Lab scenarios call the same `/api/v1/scenarios/.../run` path as scripted exercises; Learning Lab captures graded analyst journeys for capstone rubrics.",
+    title: "Scenario parity",
+    body: "Attack Lab scenarios call the same `/api/v1/scenarios/.../run` path as scripted demos—same alerts and incidents your operators triage in production-like flows.",
   },
   {
     icon: Award,

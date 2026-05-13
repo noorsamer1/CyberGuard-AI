@@ -101,7 +101,7 @@ const STACK_TECH: readonly StackTech[] = [
   {
     label: "Next.js",
     mono: "app router",
-    tip: "App Router frontend for dashboards, Attack Lab, learning, and reports—server and client components where each fits best.",
+    tip: "App Router frontend for dashboards, Attack Lab, and reports—server and client components where each fits best.",
     icon: LayoutTemplate,
     bar: "from-zinc-200/90 to-zinc-500/70",
     iconWrap: "border-zinc-400/35 bg-zinc-500/15 text-zinc-100",
@@ -109,7 +109,7 @@ const STACK_TECH: readonly StackTech[] = [
   {
     label: "Postgres",
     mono: "oltp + audit",
-    tip: "System of record for users, alerts, incidents, audit trails, and learning sessions—relational data with migrations via Alembic.",
+    tip: "System of record for users, alerts, incidents, audit trails, and reports—relational data with migrations via Alembic.",
     icon: Database,
     bar: "from-sky-400/90 to-blue-700/80",
     iconWrap: "border-sky-500/40 bg-sky-500/10 text-sky-200",

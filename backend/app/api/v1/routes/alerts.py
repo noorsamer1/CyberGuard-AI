@@ -1,15 +1,15 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import CurrentUser
+from app.core.deps import CurrentUser, PaginationDep
+from app.core.exceptions import bad_request, not_found
 from app.models.enums import AlertStatus, Severity
 from app.schemas.ai_classification import AIClassificationOut, ai_classification_to_out
 from app.schemas.alert import AlertOut, AlertStatusUpdate, alert_to_out
-from app.core.deps import PaginationDep
 from app.schemas.common import PaginatedResponse
 from app.services import alert_service
 from app.services import ai_detection_service
@@ -51,7 +51,6 @@ def list_alerts(
 
 @router.get("/{alert_id}", response_model=AlertOut)
 def get_alert(user: CurrentUser, alert_id: int, db: Session = Depends(get_db)):
-    from app.core.exceptions import not_found
     a = alert_service.get_alert(db, alert_id)
     if a.owner_id != user.id:
         raise not_found("Alert not found")
@@ -60,8 +59,6 @@ def get_alert(user: CurrentUser, alert_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{alert_id}/ai-classification", response_model=AIClassificationOut)
 def get_alert_ai_classification(user: CurrentUser, alert_id: int, db: Session = Depends(get_db)):
-    from app.core.exceptions import not_found
-
     a = alert_service.get_alert(db, alert_id)
     if a.owner_id != user.id:
         raise not_found("Alert not found")
@@ -71,6 +68,39 @@ def get_alert_ai_classification(user: CurrentUser, alert_id: int, db: Session = 
     return ai_classification_to_out(item)
 
 
+@router.post("/{alert_id}/ai-classify", response_model=AIClassificationOut)
+def post_alert_ai_classify(user: CurrentUser, alert_id: int, db: Session = Depends(get_db)):
+    """Run (or return cached) advisory AI classification for this alert's event."""
+    a = alert_service.get_alert(db, alert_id)
+    if a.owner_id != user.id:
+        raise not_found("Alert not found")
+
+    item, err = ai_detection_service.request_ai_classification_for_alert(
+        db, alert=a, owner_id=user.id
+    )
+    if item is not None and not err:
+        out = ai_classification_to_out(item)
+        if out is None:
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI classification could not be loaded.",
+            )
+        return out
+
+    if err == "no_event":
+        raise bad_request("This alert has no linked event for AI analysis.")
+    if err == "ai_disabled":
+        raise bad_request("AI classification is disabled for this deployment.")
+    if err == "no_api_key":
+        raise bad_request("OpenRouter API key is not configured; AI insight is unavailable.")
+    if err == "classification_unavailable":
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI could not produce a classification. Try again later.",
+        )
+    raise not_found("Alert not found")
+
+
 @router.patch("/{alert_id}/status", response_model=AlertOut)
 def patch_status(
     user: CurrentUser,
@@ -78,7 +108,6 @@ def patch_status(
     body: AlertStatusUpdate,
     db: Session = Depends(get_db),
 ):
-    from app.core.exceptions import not_found
     a = alert_service.get_alert(db, alert_id)
     if a.owner_id != user.id:
         raise not_found("Alert not found")

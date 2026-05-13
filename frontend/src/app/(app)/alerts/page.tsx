@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ShieldOff, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
+import { AlertAIInsightDialog } from "@/components/alerts/alert-ai-insight-dialog";
 import { SeverityBadge } from "@/components/common/severity-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ export default function AlertsPage() {
   const [page, setPage] = useState(1);
   const [severity, setSeverity] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+  const [insightAlert, setInsightAlert] = useState<Alert | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["alerts", page, severity, status],
@@ -82,6 +84,16 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-6">
+      <AlertAIInsightDialog
+        alert={insightAlert}
+        open={insightAlert !== null}
+        onOpenChange={(o) => {
+          if (!o) setInsightAlert(null);
+        }}
+        onClassificationStored={() => {
+          void qc.invalidateQueries({ queryKey: ["alerts"] });
+        }}
+      />
       <div>
         <h1 className="text-2xl font-semibold">Alert center</h1>
         <p className="text-sm text-muted-foreground">Triage, acknowledge, and resolve detections.</p>
@@ -214,7 +226,22 @@ export default function AlertsPage() {
                       {new Date(a.created_at).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          title={
+                            a.event_id
+                              ? "AI suggested severity, confidence, and rationale"
+                              : "No linked event for AI context"
+                          }
+                          disabled={!a.event_id}
+                          onClick={() => setInsightAlert(a)}
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Insight
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"

@@ -22,7 +22,7 @@ const layers = [
   },
   {
     title: "Persistence",
-    body: "PostgreSQL for events, alerts, incidents, exercises, reports; Redis for brokered jobs.",
+    body: "PostgreSQL for events, alerts, incidents, and reports; Redis for brokered jobs.",
     icon: Database,
   },
 ];

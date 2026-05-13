@@ -5,9 +5,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.alert import Alert
-from app.models.enums import AlertStatus, ExerciseSessionStatus, IncidentStatus, Severity
+from app.models.enums import AlertStatus, IncidentStatus, Severity
 from app.models.event import Event
-from app.models.exercise_session import ExerciseSession
 from app.models.incident import Incident
 from app.schemas.dashboard import (
     AnomalySignals,
@@ -455,12 +454,6 @@ def get_ui_recommendations(db: Session, owner_id: int) -> list[UIRecommendation]
             Incident.status.in_([IncidentStatus.open, IncidentStatus.investigating]),
         )
     ) or 0
-    sessions_completed = db.scalar(
-        select(func.count()).select_from(ExerciseSession).where(
-            ExerciseSession.user_id == owner_id,
-            ExerciseSession.status == ExerciseSessionStatus.completed,
-        )
-    ) or 0
     recommendations: list[UIRecommendation] = []
 
     if open_alerts >= 10:
@@ -485,17 +478,6 @@ def get_ui_recommendations(db: Session, owner_id: int) -> list[UIRecommendation]
                 severity="medium",
             )
         )
-    if sessions_completed < 3:
-        recommendations.append(
-            UIRecommendation(
-                id="training-gap",
-                title="Training cadence is low",
-                rationale="Frequent practice improves MTTA and investigation quality.",
-                action_label="Start Learning Session",
-                action_href="/learning",
-                severity="low",
-            )
-        )
     if not recommendations:
         recommendations.append(
             UIRecommendation(
@@ -507,4 +489,12 @@ def get_ui_recommendations(db: Session, owner_id: int) -> list[UIRecommendation]
                 severity="info",
             )
         )
-    return recommendations
+    # Learning / exercise flows were removed; never surface stale advisor rows.
+    drop_ids = frozenset({"training-cadence", "learning-session", "low-training-cadence"})
+    return [
+        r
+        for r in recommendations
+        if r.id not in drop_ids
+        and "/learning" not in r.action_href.lower()
+        and "/exercise" not in r.action_href.lower()
+    ]
