@@ -1,0 +1,169 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cyberguard
+      POSTGRES_PASSWORD: cyberguard
+      POSTGRES_DB: cyberguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyberguard -d cyberguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  range-target:
+    build:
+      context: ./range-target
+      dockerfile: Dockerfile
+    environment:
+      RANGE_SHARED_SECRET: ${RANGE_SHARED_SECRET:-dev-range-secret-change-me}
+    ports:
+      - "127.0.0.1:8088:8088"
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/health', timeout=5).read()",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    # Loads OPENROUTER_API_KEY and other vars from backend/.env (Compose does not read this file for ${VAR} substitution).
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://cyberguard:cyberguard@postgres:5432/cyberguard
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      # Override only when set in shell or repo-root .env (used by Compose interpolation)
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-in-production}
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      REPORTS_DIR: /data/reports
+      RANGE_ENABLED: "true"
+      RANGE_TARGET_URL: http://range-target:8088
+      RANGE_PUBLIC_URL: http://127.0.0.1:8088
+      RANGE_SHARED_SECRET: ${RANGE_SHARED_SECRET:-dev-range-secret-change-me}
+    ports:
+      - "8000:8000"
+    volumes:
+      - reports_data:/data/reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      range-target:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  worker:
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://cyberguard:cyberguard@postgres:5432/cyberguard
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-in-production}
+      REPORTS_DIR: /data/reports
+      SKIP_ALEMBIC: "1"
+      RANGE_ENABLED: "true"
+      RANGE_TARGET_URL: http://range-target:8088
+      RANGE_PUBLIC_URL: http://127.0.0.1:8088
+      RANGE_SHARED_SECRET: ${RANGE_SHARED_SECRET:-dev-range-secret-change-me}
+    volumes:
+      - reports_data:/data/reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api:
+        condition: service_healthy
+    command:
+      [
+        "python",
+        "-m",
+        "celery",
+        "-A",
+        "app.tasks.celery_app:celery_app",
+        "worker",
+        "--loglevel=INFO",
+      ]
+
+  beat:
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://cyberguard:cyberguard@postgres:5432/cyberguard
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-in-production}
+      REPORTS_DIR: /data/reports
+      SKIP_ALEMBIC: "1"
+      RANGE_ENABLED: "true"
+      RANGE_TARGET_URL: http://range-target:8088
+      RANGE_PUBLIC_URL: http://127.0.0.1:8088
+      RANGE_SHARED_SECRET: ${RANGE_SHARED_SECRET:-dev-range-secret-change-me}
+    volumes:
+      - reports_data:/data/reports
+    depends_on:
+      redis:
+        condition: service_started
+      api:
+        condition: service_healthy
+    command:
+      [
+        "python",
+        "-m",
+        "celery",
+        "-A",
+        "app.tasks.celery_app:celery_app",
+        "beat",
+        "--loglevel=INFO",
+      ]
+
+volumes:
+  pgdata:
+  reports_data:
