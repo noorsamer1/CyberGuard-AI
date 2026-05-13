@@ -46,10 +46,6 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 }
 
 export function IncidentPortfolioReportDialog({ open, onOpenChange, report, isLoading }: Props) {
-  function handlePrint() {
-    window.print();
-  }
-
   function handleDownload() {
     if (report) downloadIncidentPortfolioHtml(report);
   }
@@ -67,9 +63,6 @@ export function IncidentPortfolioReportDialog({ open, onOpenChange, report, isLo
         >
           <Button type="button" variant="outline" size="sm" disabled={!report || isLoading} onClick={handleDownload}>
             Download HTML
-          </Button>
-          <Button type="button" variant="outline" size="sm" disabled={!report || isLoading} onClick={handlePrint}>
-            Print / Save as PDF
           </Button>
         </div>
         <DialogHeader className="border-b border-border/60 px-4 py-4">
@@ -257,8 +250,7 @@ export function IncidentPortfolioReportDialog({ open, onOpenChange, report, isLo
                 )}
 
                 <p className="text-[11px] text-muted-foreground">
-                  Downloaded HTML mirrors this view for sharing. Print uses your browser layout — choose “Save as
-                  PDF” in the print dialog for a file copy.
+                  Downloaded HTML mirrors this view for sharing or archiving.
                 </p>
               </>
             )}

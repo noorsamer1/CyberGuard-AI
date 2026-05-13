@@ -364,7 +364,7 @@ export function buildIncidentPortfolioHtml(report: IncidentPortfolioReport): str
 
     ${aiHtml}
 
-    <footer>CyberGuard AI — export mirrors in-app aggregates. Print or Save as PDF from your browser.</footer>
+    <footer>CyberGuard AI — export mirrors in-app aggregates. Open the HTML in a browser to print if needed.</footer>
   </div>
 </body>
 </html>`;
