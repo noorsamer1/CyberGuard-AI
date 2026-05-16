@@ -2,11 +2,15 @@ from sqlalchemy.orm import Session
 
 from app.detection.rules.base import DetectionRule, RuleHit
 from app.detection.rules.brute_force_rule import BruteForceRule
+from app.detection.rules.command_injection_rule import CommandInjectionRule
 from app.detection.rules.data_exfiltration_rule import DataExfiltrationRule
 from app.detection.rules.denied_spike_rule import DeniedSpikeRule
+from app.detection.rules.dns_tunneling_rule import DnsTunnelingRule
 from app.detection.rules.failed_login_rule import FailedLoginBurstRule
 from app.detection.rules.path_traversal_rule import PathTraversalRule
+from app.detection.rules.password_spray_rule import PasswordSprayRule
 from app.detection.rules.port_scan_rule import PortScanRule
+from app.detection.rules.privilege_escalation_rule import PrivilegeEscalationRule
 from app.detection.rules.ransomware_simulation_rule import RansomwareSimulationRule
 from app.detection.rules.rate_anomaly_rule import RateAnomalyRule
 from app.detection.rules.sql_injection_rule import SqlInjectionRule
@@ -30,6 +34,10 @@ class DetectionEngine:
             PathTraversalRule(),
             SuspiciousUploadRule(),
             RansomwareSimulationRule(),
+            DnsTunnelingRule(),
+            PasswordSprayRule(),
+            CommandInjectionRule(),
+            PrivilegeEscalationRule(),
         ]
 
     def run(self, db: Session, event: Event) -> list[Alert]:

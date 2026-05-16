@@ -94,6 +94,9 @@ def _send(handler: BaseHTTPRequestHandler, code: int, body: dict[str, Any]) -> N
     raw = json.dumps(body).encode("utf-8")
     handler.send_response(code)
     handler.send_header("Content-Type", "application/json")
+    handler.send_header("Access-Control-Allow-Origin", "*")
+    handler.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+    handler.send_header("Access-Control-Allow-Headers", "Content-Type, X-Range-Secret")
     handler.send_header("Content-Length", str(len(raw)))
     handler.end_headers()
     handler.wfile.write(raw)
@@ -108,6 +111,14 @@ class RangeHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt: str, *args: Any) -> None:
         return
+
+    def do_OPTIONS(self) -> None:
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Range-Secret")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -269,6 +280,93 @@ class RangeHandler(BaseHTTPRequestHandler):
                 metadata={"attack": "ransomware_simulation"},
             )
             _send(self, 200, {"renamed": renamed, "safe": True})
+            return
+
+        if parsed.path == "/dns/query":
+            body = _read_json(self)
+            query = str(body.get("query", "healthcheck.local"))
+            lowered = query.lower()
+            suspicious = len(query) > 32 or any(
+                marker in lowered for marker in ("=", "exfil", "credential", "chunk")
+            )
+            _record(
+                event_type="dns",
+                status="warning" if suspicious else "ok",
+                severity="high" if suspicious else "low",
+                message=(
+                    f"Suspicious DNS query pattern observed: {query[:180]}"
+                    if suspicious
+                    else f"Normal DNS lookup: {query[:180]}"
+                ),
+                source_ip=source_ip,
+                port=53,
+                raw_log=f"dns_query qname={query}",
+                metadata={"attack": "dns_tunneling", "query": query},
+            )
+            _send(self, 200, {"resolved": True, "query": query, "suspicious": suspicious})
+            return
+
+        if parsed.path == "/auth/spray":
+            body = _read_json(self)
+            username = str(body.get("username", "unknown"))
+            password = str(body.get("password", ""))
+            ok = username == "admin" and password == "CyberGuard!2026"
+            _record(
+                event_type="authentication",
+                status="success" if ok else "failed",
+                severity="high" if not ok else "medium",
+                message=(
+                    "Password spray attempt succeeded on privileged account"
+                    if ok
+                    else "Password spray attempt failed"
+                ),
+                source_ip=source_ip,
+                username=username,
+                port=HTTP_PORT,
+                raw_log=f"POST /auth/spray user={username} status={'success' if ok else 'failed'}",
+                metadata={"attack": "password_spray", "username": username},
+            )
+            _send(self, 200 if ok else 401, {"authenticated": ok, "username": username})
+            return
+
+        if parsed.path == "/exec":
+            body = _read_json(self)
+            payload = str(body.get("input", ""))
+            lowered = payload.lower()
+            suspicious = any(token in lowered for token in (";", "&&", "|", "$(", "`", "whoami", "id"))
+            _record(
+                event_type="web_attack",
+                status="blocked" if suspicious else "ok",
+                severity="high" if suspicious else "low",
+                message=(
+                    f"Command injection payload blocked: {payload[:180]}"
+                    if suspicious
+                    else f"Safe command input accepted: {payload[:180]}"
+                ),
+                source_ip=source_ip,
+                port=HTTP_PORT,
+                raw_log=f"POST /exec payload={payload}",
+                metadata={"attack": "command_injection", "payload": payload},
+            )
+            _send(self, 200, {"accepted": not suspicious, "blocked": suspicious})
+            return
+
+        if parsed.path == "/priv-esc":
+            body = _read_json(self)
+            username = str(body.get("username", "analyst"))
+            action = str(body.get("action", "sudo -l"))
+            _record(
+                event_type="admin_access",
+                status="warning",
+                severity="critical",
+                message=f"Privilege escalation behavior detected for {username}: {action[:160]}",
+                source_ip=source_ip,
+                username=username,
+                port=HTTP_PORT,
+                raw_log=f"POST /priv-esc user={username} action={action}",
+                metadata={"attack": "privilege_escalation", "action": action},
+            )
+            _send(self, 200, {"recorded": True, "username": username, "action": action})
             return
 
         _send(self, 404, {"message": "not found"})
