@@ -1,7 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -10,9 +12,12 @@ from app.core.exceptions import bad_request, not_found
 from app.models.enums import AlertStatus, Severity
 from app.schemas.ai_classification import AIClassificationOut, ai_classification_to_out
 from app.schemas.alert import AlertOut, AlertStatusUpdate, alert_to_out
+from app.schemas.alert_report import AlertPortfolioReportRequest
 from app.schemas.common import PaginatedResponse
 from app.services import alert_service
 from app.services import ai_detection_service
+from app.services import alert_portfolio_service
+from app.services import report_service
 
 router = APIRouter()
 
@@ -46,6 +51,39 @@ def list_alerts(
         total=total,
         page=pagination.page,
         page_size=pagination.page_size,
+    )
+
+
+@router.post("/generate-report")
+def generate_alerts_portfolio_report(
+    user: CurrentUser,
+    body: AlertPortfolioReportRequest,
+    db: Session = Depends(get_db),
+):
+    """Build a PDF portfolio for all alerts matching the request filters."""
+    alerts = alert_service.list_alerts_for_report(
+        db,
+        owner_id=user.id,
+        severity=body.severity,
+        status=body.status,
+        limit=body.max_alerts,
+    )
+    if not alerts:
+        raise bad_request("No alerts match the current filters.")
+
+    ctx = alert_portfolio_service.build_alert_portfolio_context(
+        alerts,
+        severity_filter=body.severity,
+        status_filter=body.status,
+    )
+    root = report_service.ensure_reports_dir()
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    path = root / f"alerts_portfolio_{user.id}_{stamp}.pdf"
+    report_service.build_alerts_portfolio_pdf(ctx, path)
+    return FileResponse(
+        str(path),
+        filename=f"cyberguard-alerts-{stamp}.pdf",
+        media_type="application/pdf",
     )
 
 

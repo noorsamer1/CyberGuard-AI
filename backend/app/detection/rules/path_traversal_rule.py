@@ -21,7 +21,11 @@ class PathTraversalRule(DetectionRule):
                 description="The local range target blocked traversal-style file path input.",
                 severity=Severity.high,
                 rule_name=self.name,
-                reasoning="Range rule: traversal sequence or explicit path_traversal metadata was observed.",
+                attack_type="path_traversal",
+                reasoning=(
+                    "Evidence: traversal sequence or path_traversal metadata in "
+                    f"{event.raw_log or event.message or 'file access telemetry'}."
+                ),
                 event_id=event.id,
             )
         ]

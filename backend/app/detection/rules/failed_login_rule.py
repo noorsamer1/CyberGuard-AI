@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.detection.rules.base import DetectionRule, RuleHit
@@ -25,6 +25,7 @@ class FailedLoginBurstRule(DetectionRule):
                     Event.username == event.username,
                     Event.timestamp >= window_start,
                     Event.timestamp <= event.timestamp,
+                    _failed_login_filter(),
                 )
             )
         )
@@ -37,10 +38,31 @@ class FailedLoginBurstRule(DetectionRule):
                 description=f"User {event.username} has {cnt} failed login attempts in 5 minutes.",
                 severity=Severity.medium,
                 rule_name=self.name,
-                reasoning="Threshold: ≥6 failed logins for same username within 5 minutes.",
+                attack_type="brute_force",
+                reasoning=(
+                    f"Evidence: {cnt} failed logins for user {event.username} within 5 minutes "
+                    f"(latest status={event.status or 'unknown'})."
+                ),
                 event_id=event.id,
             )
         ]
+
+
+def _failed_login_filter():
+    """SQLAlchemy filter for failed authentication events only."""
+    return or_(
+        Event.status.in_(["failed", "failure", "denied", "error"]),
+        and_(
+            func.lower(Event.event_type).like("%login%"),
+            func.lower(Event.message).like("%failed%"),
+            ~func.lower(Event.message).like("%successful%"),
+        ),
+        and_(
+            func.lower(Event.event_type).like("%auth%"),
+            func.lower(Event.message).like("%failed%"),
+            ~func.lower(Event.message).like("%successful%"),
+        ),
+    )
 
 
 def _is_failed_login(event: Event) -> bool:
@@ -49,8 +71,12 @@ def _is_failed_login(event: Event) -> bool:
     msg = (event.message or "").lower()
     if "login" not in et and "auth" not in et:
         return False
+    if st in ("success", "ok", "succeeded"):
+        return False
+    if "successful" in msg:
+        return False
     if st in ("failed", "failure", "denied", "error"):
         return True
-    if "fail" in msg or "invalid" in msg:
+    if "failed login" in msg or "invalid" in msg:
         return True
     return False

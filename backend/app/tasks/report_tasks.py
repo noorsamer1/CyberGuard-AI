@@ -36,7 +36,7 @@ def generate_incident_pdf_task(report_id: int, email_to: str | None = None) -> s
         inc = get_incident(db, rep.incident_id, load_events=True)
         ensure_reports_dir()
         path = Path(rep.file_path)
-        build_incident_pdf(inc, path)
+        build_incident_pdf(inc, path, db=db)
         db.commit()
         if email_to and settings.smtp_configured:
             try:

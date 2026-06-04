@@ -21,7 +21,11 @@ class SqlInjectionRule(DetectionRule):
                 description="The local range target observed SQL injection-style input against a toy endpoint.",
                 severity=Severity.high,
                 rule_name=self.name,
-                reasoning="Range rule: SQL metacharacters or explicit sql_injection metadata were observed.",
+                attack_type="sql_injection",
+                reasoning=(
+                    "Evidence: SQL metacharacters or sql_injection metadata in "
+                    f"{event.raw_log or event.message or 'web telemetry'}."
+                ),
                 event_id=event.id,
             )
         ]

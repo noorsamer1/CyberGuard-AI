@@ -16,6 +16,8 @@ class BruteForceRule(DetectionRule):
             return []
         if not _is_auth_failure(event):
             return []
+        if not event.username:
+            return []
         window_start = event.timestamp - timedelta(minutes=5)
         q = (
             select(func.count())
@@ -23,6 +25,7 @@ class BruteForceRule(DetectionRule):
             .where(
                 and_(
                     Event.source_ip == event.source_ip,
+                    Event.username == event.username,
                     Event.timestamp >= window_start,
                     Event.timestamp <= event.timestamp,
                     or_(
@@ -38,10 +41,18 @@ class BruteForceRule(DetectionRule):
         return [
             RuleHit(
                 title="Possible brute-force attack",
-                description=f"Source {event.source_ip} shows {cnt} authentication failures in 5 minutes.",
+                description=(
+                    f"Source {event.source_ip} shows {cnt} authentication failures "
+                    f"against user {event.username} in 5 minutes."
+                ),
                 severity=Severity.high,
                 rule_name=self.name,
-                reasoning="Threshold: ≥10 auth-related failures from one IP within 5 minutes.",
+                attack_type="brute_force",
+                reasoning=(
+                    f"Evidence: {cnt} auth-related failures for user "
+                    f"{event.username} from {event.source_ip} within 5 minutes "
+                    f"(latest: {event.message or event.raw_log or 'auth failure'})."
+                ),
                 event_id=event.id,
             )
         ]

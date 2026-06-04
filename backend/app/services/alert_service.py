@@ -61,3 +61,31 @@ def update_status(db: Session, alert_id: int, status: AlertStatus) -> Alert:
     db.commit()
     db.refresh(a)
     return a
+
+
+def list_alerts_for_report(
+    db: Session,
+    *,
+    owner_id: int,
+    severity: Optional[Severity] = None,
+    status: Optional[AlertStatus] = None,
+    limit: int = 500,
+) -> list[Alert]:
+    """Load alerts with linked events for portfolio PDF (newest first)."""
+    from sqlalchemy.orm import selectinload
+
+    stmt = (
+        select(Alert)
+        .options(selectinload(Alert.event))
+        .where(Alert.owner_id == owner_id)
+        .order_by(Alert.created_at.desc())
+        .limit(limit)
+    )
+    conds = []
+    if severity:
+        conds.append(Alert.severity == severity)
+    if status:
+        conds.append(Alert.status == status)
+    if conds:
+        stmt = stmt.where(and_(*conds))
+    return list(db.scalars(stmt).all())

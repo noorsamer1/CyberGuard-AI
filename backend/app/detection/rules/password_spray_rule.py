@@ -43,9 +43,10 @@ class PasswordSprayRule(DetectionRule):
                 ),
                 severity=Severity.high,
                 rule_name=self.name,
+                attack_type="password_spray",
                 reasoning=(
-                    "Threshold: >=8 unique usernames with failed authentication from one source "
-                    "within 10 minutes."
+                    f"Evidence: {unique_users} unique usernames with failed auth from "
+                    f"{event.source_ip} within 10 minutes (latest user={event.username or 'unknown'})."
                 ),
                 event_id=event.id,
             )

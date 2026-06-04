@@ -14,6 +14,7 @@ class RuleHit:
     severity: Severity
     rule_name: str
     reasoning: str
+    attack_type: str
     event_id: Optional[int] = None
 
 

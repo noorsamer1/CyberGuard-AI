@@ -28,13 +28,15 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.state.limiter = limiter
 
 app.add_middleware(SlowAPIMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors_kwargs: dict = {
+    "allow_origins": settings.cors_origin_list,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if settings.cors_origin_regex.strip():
+    _cors_kwargs["allow_origin_regex"] = settings.cors_origin_regex.strip()
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 
 @app.exception_handler(RequestValidationError)

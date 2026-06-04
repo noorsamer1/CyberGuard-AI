@@ -26,6 +26,7 @@ from app.schemas.incident_portfolio import (
 from app.core.config import settings
 from app.services import ai_service, briefing_service, incident_service, report_service
 from app.services import incident_portfolio_service
+from app.services.incident_report_context import build_incident_report_context, context_to_dict
 from app.services.incident_service import get_incident
 from app.tasks.ai_tasks import analyze_incident_task
 from app.tasks.report_tasks import generate_incident_pdf_task
@@ -157,11 +158,23 @@ def analyze(
         }
         for e in inc.events[:40]
     ]
-    result = ai_service.analyze_incident_context(inc.title, inc.summary, snippets)
+    det_ctx = context_to_dict(build_incident_report_context(db, inc))
+    result = ai_service.analyze_incident_context(
+        inc.title, inc.summary, snippets, deterministic_context=det_ctx
+    )
     if result:
         inc.ai_summary = result.get("executive_summary") or result.get("summary")
-        inc.remediation = result.get("remediation")
-        inc.analyst_notes = result.get("analyst_notes")
+        inc.remediation = result.get("prioritized_remediation") or result.get("remediation")
+        note_parts = []
+        if result.get("root_cause"):
+            note_parts.append(f"Root cause: {result['root_cause']}")
+        if result.get("impact"):
+            note_parts.append(f"Impact: {result['impact']}")
+        if result.get("why_suspicious"):
+            note_parts.append(f"Why suspicious: {result['why_suspicious']}")
+        if result.get("analyst_notes"):
+            note_parts.append(str(result["analyst_notes"]))
+        inc.analyst_notes = "\n\n".join(note_parts) or None
         db.add(
             AIAuditLog(
                 incident_id=inc.id,

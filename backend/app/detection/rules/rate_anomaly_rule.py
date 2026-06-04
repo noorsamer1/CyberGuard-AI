@@ -35,7 +35,10 @@ class RateAnomalyRule(DetectionRule):
                 description=f"Source {event.source_ip} generated {cnt} events in one minute.",
                 severity=Severity.critical,
                 rule_name=self.name,
-                reasoning="Threshold: ≥80 events from one IP within 1 minute.",
+                attack_type="rate_anomaly",
+                reasoning=(
+                    f"Evidence: {cnt} events from {event.source_ip} within 1 minute."
+                ),
                 event_id=event.id,
             )
         ]

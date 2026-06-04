@@ -36,6 +36,7 @@ class DnsTunnelingRule(DetectionRule):
         ) or 0
         if suspicious_count < 4:
             return []
+        query = str((event.metadata_json or {}).get("query") or "")[:80]
         return [
             RuleHit(
                 title="Potential DNS tunneling activity",
@@ -45,9 +46,10 @@ class DnsTunnelingRule(DetectionRule):
                 ),
                 severity=Severity.high,
                 rule_name=self.name,
+                attack_type="dns_tunneling",
                 reasoning=(
-                    "Threshold: >=4 suspicious DNS query events from one source in 5 minutes "
-                    "(long/encoded query behavior)."
+                    f"Evidence: {suspicious_count} suspicious DNS events from {event.source_ip} "
+                    f"within 5 minutes (sample query={query or 'encoded label'})."
                 ),
                 event_id=event.id,
             )
@@ -55,19 +57,15 @@ class DnsTunnelingRule(DetectionRule):
 
 
 def _is_dns_tunneling_signal(event: Event) -> bool:
-    event_type = (event.event_type or "").lower()
-    message = (event.message or "").lower()
-    raw_log = (event.raw_log or "").lower()
     metadata = event.metadata_json or {}
-    query = str(metadata.get("query") or "").lower()
     if str(metadata.get("attack") or "").lower() == "dns_tunneling":
         return True
-    if event_type != "dns":
+    if (event.event_type or "").lower() != "dns":
         return False
+    message = (event.message or "").lower()
     if "suspicious dns query" in message:
         return True
-    if len(query) > 32 and "." in query:
-        return True
-    if "dns_query" in raw_log and ("credential" in raw_log or "chunk" in raw_log):
+    query = str(metadata.get("query") or "")
+    if len(query) > 32:
         return True
     return False

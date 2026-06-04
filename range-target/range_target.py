@@ -96,7 +96,7 @@ def _send(handler: BaseHTTPRequestHandler, code: int, body: dict[str, Any]) -> N
     handler.send_header("Content-Type", "application/json")
     handler.send_header("Access-Control-Allow-Origin", "*")
     handler.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-    handler.send_header("Access-Control-Allow-Headers", "Content-Type, X-Range-Secret")
+    handler.send_header("Access-Control-Allow-Headers", _CORS_ALLOW_HEADERS)
     handler.send_header("Content-Length", str(len(raw)))
     handler.end_headers()
     handler.wfile.write(raw)
@@ -104,6 +104,29 @@ def _send(handler: BaseHTTPRequestHandler, code: int, body: dict[str, Any]) -> N
 
 def _authorized(handler: BaseHTTPRequestHandler) -> bool:
     return handler.headers.get("X-Range-Secret") == SECRET
+
+
+def _looks_like_ip(value: str) -> bool:
+    """Basic validation for client-supplied origin IP (IPv4 or IPv6)."""
+    if not value or len(value) > 45:
+        return False
+    if value.count(".") == 3:
+        parts = value.split(".")
+        return len(parts) == 4 and all(p.isdigit() and 0 <= int(p) <= 255 for p in parts)
+    if ":" in value:
+        return all(c in "0123456789abcdefABCDEF:" for c in value)
+    return False
+
+
+def _effective_source_ip(handler: BaseHTTPRequestHandler) -> str:
+    """Prefer device-origin IP from browser lab launches over Docker bridge address."""
+    override = (handler.headers.get("X-Range-Client-Ip") or "").strip()
+    if override and _looks_like_ip(override):
+        return override
+    return handler.client_address[0] or "127.0.0.1"
+
+
+_CORS_ALLOW_HEADERS = "Content-Type, X-Range-Secret, X-Range-Client-Ip"
 
 
 class RangeHandler(BaseHTTPRequestHandler):
@@ -116,14 +139,14 @@ class RangeHandler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Range-Secret")
+        self.send_header("Access-Control-Allow-Headers", _CORS_ALLOW_HEADERS)
         self.send_header("Access-Control-Max-Age", "86400")
         self.end_headers()
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query, keep_blank_values=True)
-        source_ip = self.client_address[0]
+        source_ip = _effective_source_ip(self)
 
         if parsed.path == "/health":
             _send(self, 200, {"status": "ok", "service": "cyberguard-range-target"})
@@ -192,7 +215,7 @@ class RangeHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
-        source_ip = self.client_address[0]
+        source_ip = _effective_source_ip(self)
 
         if parsed.path == "/_range/reset":
             if not _authorized(self):
@@ -289,6 +312,9 @@ class RangeHandler(BaseHTTPRequestHandler):
             suspicious = len(query) > 32 or any(
                 marker in lowered for marker in ("=", "exfil", "credential", "chunk")
             )
+            metadata: dict[str, Any] = {"query": query}
+            if suspicious:
+                metadata["attack"] = "dns_tunneling"
             _record(
                 event_type="dns",
                 status="warning" if suspicious else "ok",
@@ -301,7 +327,7 @@ class RangeHandler(BaseHTTPRequestHandler):
                 source_ip=source_ip,
                 port=53,
                 raw_log=f"dns_query qname={query}",
-                metadata={"attack": "dns_tunneling", "query": query},
+                metadata=metadata,
             )
             _send(self, 200, {"resolved": True, "query": query, "suspicious": suspicious})
             return
@@ -334,8 +360,11 @@ class RangeHandler(BaseHTTPRequestHandler):
             payload = str(body.get("input", ""))
             lowered = payload.lower()
             suspicious = any(token in lowered for token in (";", "&&", "|", "$(", "`", "whoami", "id"))
+            metadata_exec: dict[str, Any] = {"payload": payload}
+            if suspicious:
+                metadata_exec["attack"] = "command_injection"
             _record(
-                event_type="web_attack",
+                event_type="web_attack" if suspicious else "web",
                 status="blocked" if suspicious else "ok",
                 severity="high" if suspicious else "low",
                 message=(
@@ -346,7 +375,7 @@ class RangeHandler(BaseHTTPRequestHandler):
                 source_ip=source_ip,
                 port=HTTP_PORT,
                 raw_log=f"POST /exec payload={payload}",
-                metadata={"attack": "command_injection", "payload": payload},
+                metadata=metadata_exec,
             )
             _send(self, 200, {"accepted": not suspicious, "blocked": suspicious})
             return

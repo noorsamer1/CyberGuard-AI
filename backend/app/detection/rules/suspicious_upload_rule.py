@@ -20,7 +20,11 @@ class SuspiciousUploadRule(DetectionRule):
                 description="The local range target observed suspicious upload behavior.",
                 severity=Severity.medium,
                 rule_name=self.name,
-                reasoning="Range rule: upload misuse metadata or suspicious upload wording was observed.",
+                attack_type="suspicious_upload",
+                reasoning=(
+                    "Evidence: upload misuse metadata or suspicious upload wording in "
+                    f"{event.message or event.raw_log or 'web telemetry'}."
+                ),
                 event_id=event.id,
             )
         ]

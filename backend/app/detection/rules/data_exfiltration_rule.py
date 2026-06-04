@@ -46,9 +46,10 @@ class DataExfiltrationRule(DetectionRule):
                 ),
                 severity=Severity.critical,
                 rule_name=self.name,
+                attack_type="data_exfiltration",
                 reasoning=(
-                    "Threshold: >=4 exfil indicators (DLP access, outbound transfer, or egress policy hits) "
-                    "from one source within 10 minutes."
+                    f"Evidence: {count} exfil indicators from {event.source_ip} within 10 minutes "
+                    f"(latest: {event.message or event.raw_log or 'DLP/network signal'})."
                 ),
                 event_id=event.id,
             )

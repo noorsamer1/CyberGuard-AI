@@ -41,7 +41,10 @@ class DeniedSpikeRule(DetectionRule):
                 description=f"Source {event.source_ip} triggered {cnt} denied/blocked events in 5 minutes.",
                 severity=Severity.low,
                 rule_name=self.name,
-                reasoning="Threshold: ≥20 denied/blocked events from one IP within 5 minutes.",
+                attack_type="denied_access_spike",
+                reasoning=(
+                    f"Evidence: {cnt} denied/blocked events from {event.source_ip} within 5 minutes."
+                ),
                 event_id=event.id,
             )
         ]

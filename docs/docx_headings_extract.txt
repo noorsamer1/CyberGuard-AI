@@ -1,0 +1,179 @@
+Total paragraphs: 3534
+Total headings: 176
+
+  208 | Heading 1    | 
+  209 | Heading 1    | 
+  223 | Heading 1    | 
+  227 | Heading 1    | 
+  228 | Heading 1    | 
+  229 | Heading 1    | 
+  230 | Heading 1    | 
+  231 | Heading 1    | 
+  232 | Heading 1    | 
+  233 | Heading 1    | Chapter 1: Introduction
+  234 | Heading 2    | 1.1 Overview
+  253 | Heading 2    | 1.2 Project Motivation
+  267 | Heading 2    | 1.3 Review of Related Literature and Systems
+  272 | Heading 2    | 1.4 Problem Statement (Limitation of Current Systems)
+  281 | Heading 2    | 1.5 Project Objectives
+  292 | Heading 2    | 1.6 Project Plan
+  345 | Heading 2    | 1.7 Scope
+  360 | Heading 1    | Chapter 2: Literature Review
+  362 | Heading 2    | Overview
+  365 | Heading 2    | 2.1 Introduction to IDS
+  378 | Heading 2    | 2.2 IDS Architecture
+  393 | Heading 2    | 2.3 Detection Types
+  409 | Heading 2    | 2.4 Related Research
+  428 | Heading 2    | 2.5 Research Gap
+  441 | Heading 2    | 2.6 Summary
+  444 | Heading 1    | Chapter 3 : System Analysis & Requirements
+  446 | Heading 2    | Overview
+  450 | Heading 2    | 3.1 Stakeholders
+  460 | Heading 2    | 3.2 Functional Requirements (Restarted & Clean Version)
+  487 | Heading 2    | 3.3 Non‑Functional Requirements
+  543 | Heading 2    | 3.4 Use Case Diagram
+  553 | Heading 2    | 3.5 Use Cases Descriptions
+  557 | Heading 3    | 3.5.1 IDS Monitoring Use Cases
+  579 | Heading 3    | 3.5.2 Endpoint & Intelligence Use Cases
+  588 | Heading 3    | 3.5.3 System Management Use Cases
+  600 | Heading 1    | Chapter 4: System Design
+  602 | Heading 2    | Overview
+  604 | Heading 2    | 4.1 Software Architecture
+  620 | Heading 2    | 4.2 Software Design
+  627 | Heading 3    | 4.2.1 Sequence Diagrams
+  633 | Heading 4    | 4.2.1.1 Packet Capture & Display Sequence
+  654 | Heading 4    | 4.2.1.2 Endpoint Alert Reception Sequence
+  679 | Heading 4    | 4.2.1.3 Threat Classification & Notification Sequence
+  716 | Heading 3    | 4.2.2 Class Diagram
+  862 | Heading 3    | 4.2.3 Data & IOC Design
+  867 | Heading 2    | 4.3 Machine Learning Prediction Module (AI Component)
+  869 | Heading 3    | 4.3.1 Purpose of the AI Component
+  876 | Heading 3    | 
+  878 | Heading 3    | 4.3.2 Machine Learning Models Used
+  885 | Heading 3    | 4.3.3 Design Architecture of the ML Module
+  896 | Heading 3    | 4.3.4 Data Flow Between IDS and ML Module
+  912 | Heading 3    | 4.3.5 ML Features Used for Prediction
+  924 | Heading 3    | 4.3.6 Interaction With Other System Components
+  933 | Heading 3    | 4.3.7 Justification for Including AI
+  956 | Heading 2    | 4.4 User Interface Design
+  959 | Heading 3    | 4.4.1 Main Window Layout
+  986 | Heading 3    | 4.4.2 Network Monitoring Tab
+ 1018 | Heading 3    | 4.4.3 Endpoint Alerts Tab
+ 1031 | Heading 3    | 4.4.4 Network Analytics Tab
+ 1069 | Heading 3    | 4.4.5 IOC Signatures Tab
+ 1087 | Heading 3    | 4.4.6 Design Principles
+ 1103 | Heading 1    | Chapter 5: System Implementation
+ 1104 | Heading 2    | Overview
+ 1122 | Heading 2    | 5.1 Tools and Technologies Used
+ 1124 | Heading 3    | 5.1.1 Programming Language
+ 1126 | Heading 3    | 5.1.2 Development Environment
+ 1132 | Heading 3    | 5.1.3 Python Libraries
+ 1141 | Heading 3    | 
+ 1144 | Heading 3    | 5.1.4 External Services
+ 1150 | Heading 3    | 5.1.5 Hardware Requirements
+ 1155 | Heading 2    | 5.2 Implementation of the ML Prediction Engine
+ 1158 | Heading 3    | 5.2.1 Loading the Machine Learning Model
+ 1165 | Heading 3    | 5.2.2 Feature Extraction Process
+ 1177 | Heading 3    | 5.2.3 Risk Score Generation
+ 1187 | Heading 3    | 5.2.4 Integration With the GUI
+ 1195 | Heading 3    | 5.2.5 Timeline Tracking and Analytics
+ 1202 | Heading 3    | 5.2.6 Exception Handling
+ 1226 | Heading 3    | 5.2.7 Summary
+ 1234 | Heading 2    | 5.3 Important Code Fragments and System Modules
+ 1277 | Heading 2    | 5.4 Packet Details Window
+ 1291 | Heading 2    | 5.5 Threat Event Logging
+ 1302 | Heading 2    | 5.6 CSV Export and Report Generation Module
+ 1310 | Heading 2    | 5.7 Endpoint Alert Server Module
+ 1335 | Heading 2    | 5.8 Discord Notification Module
+ 1363 | Heading 2    | 5.9 Sniffing Engine (Packet Capture Module)
+ 1380 | Heading 3    | 5.9.1 Scheduled Sniffing Feature:
+ 1409 | Heading 2    | 5.10 Traffic Analysis & Threat Tagging
+ 1520 | Heading 2    | 
+ 1536 | Heading 2    | 5.11 Advanced Packet Filtering Module
+ 1539 | Heading 3    | 5.11.1 Packet Threat Details View
+ 1550 | Heading 3    | 5.11.2 Advanced Filtering Interface
+ 1564 | Heading 3    | 5.11.3 Filtered Results Output
+ 1578 | Heading 2    | 5.12 Automated Report Generation Module
+ 1596 | Heading 3    | 5.12.1 Executive Overview
+ 1616 | Heading 3    | 5.12.2 Machine Learning Threat Analysis
+ 1630 | Heading 3    | 5.12.3 Top 10 Most Important Features
+ 1642 | Heading 3    | 5.12.4 Threat Type Distribution & Threat Severity Analysis
+ 1673 | Heading 3    | 5.12.5 Top 10 Attack Sources
+ 1684 | Heading 2    | 5.13 Mobile IDS Monitor (Android / PWA Version)
+ 1688 | Heading 3    | 5.13.1 Recent Threats View
+ 1697 | Heading 3    | 5.13.2 Connection & Settings Interface
+ 1715 | Heading 3    | 5.13.3 Mobile Dashboard Overview
+ 1732 | Heading 3    | 5.13.4 Machine-Learning Threat Level Indicator
+ 1748 | Heading 3    | 5.13.5 Waiting/Idle State
+ 1763 | Heading 1    | Chapter 6: Testing and Validation
+ 1765 | Heading 2    | Overview
+ 1768 | Heading 2    | 6.1 Introduction
+ 1771 | Heading 2    | 6.2 Test Environment Setup
+ 1803 | Heading 2    | 6.3 Functional Testing
+ 1839 | Heading 2    | 
+ 1841 | Heading 2    | 6.4 Attack Scenarios Testing
+ 1896 | Heading 3    | 6.4.1 Stealth TCP SYN Scan
+ 1946 | Heading 3    | 
+ 1961 | Heading 3    | 6.4.2 Stealth TCP FIN Scan
+ 2017 | Heading 3    | 6.4.3 TCP NULL Scan
+ 2070 | Heading 3    | 
+ 2084 | Heading 3    | 6.4.4 TCP XMAS Scan
+ 2140 | Heading 3    | 6.4.5 Land Attack
+ 2168 | Heading 3    | 6.4.6 SQL Injection Attack
+ 2205 | Heading 3    | 6.4.7 DoS Attack (UDP Flood)
+ 2263 | Heading 3    | 
+ 2265 | Heading 3    | 6.4.8 Responder Attack (LLMNR/NBT-NS Poisoning)
+ 2305 | Heading 3    | 6.4.9 Unauthorized RDP Access Attempt
+ 2372 | Heading 3    | 6.4.10 Typosquatting Attack
+ 2431 | Heading 3    | 6.4.11 Phishing Domain Attack
+ 2505 | Heading 1    | Chapter 7: Network Analysis and Requirements
+ 2507 | Heading 2    | Overview
+ 2510 | Heading 2    | 7.1 Introduction
+ 2512 | Heading 2    | 7.2 Network Analysis
+ 2519 | Heading 2    | 7.3 System Requirements
+ 2535 | Heading 2    | 7.4 Design Justification
+ 2551 | Heading 1    | Chapter 8: Network Design
+ 2553 | Heading 2    | Overview
+ 2556 | Heading 2    | 8.1 Introduction
+ 2563 | Heading 2    | 8.2 Network Architecture Overview
+ 2573 | Heading 2    | 
+ 2574 | Heading 2    | 8.3 Logical Network Design
+ 2599 | Heading 2    | 8.4 Physical Network Topology
+ 2614 | Heading 2    | 8.5 Data Flow Description
+ 2625 | Heading 2    | 8.6 Integration of AI & Mobile Components
+ 2639 | Heading 2    | 8.7 Design Justification
+ 2647 | Heading 2    | 8.8 Summary
+ 2663 | Heading 1    | Chapter 9: Network Implementation
+ 2664 | Heading 2    | Overview
+ 2666 | Heading 2    | 9.1 Introduction
+ 2668 | Heading 2    | 9.2 Implementation Steps
+ 2682 | Heading 2    | 9.3 Challenges and Solutions
+ 2685 | Heading 2    | 9.4 Results
+ 2709 | Heading 1    | Chapter 10: Quality Analysis and Testing
+ 2710 | Heading 2    | Overview
+ 2712 | Heading 2    | 
+ 2713 | Heading 2    | 10.1 Introduction
+ 2716 | Heading 2    | 10.2 Packet Capture Statistics
+ 2723 | Heading 2    | 
+ 2724 | Heading 2    | 
+ 2726 | Heading 2    | 
+ 2729 | Heading 2    | 10.3 Protocol Distribution Results
+ 2733 | Heading 2    | 10.4 Threat Detection Results
+ 2742 | Heading 2    | 10.5 Attack Scenario Results (Final 11 Scenarios)
+ 2764 | Heading 2    | 10.6 Endpoint Alert Results
+ 2770 | Heading 2    | 10.7 Machine Learning Prediction Results
+ 2779 | Heading 2    | 10.8 System Stability and Performance Results
+ 2785 | Heading 2    | 
+ 2786 | Heading 2    | 
+ 2789 | Heading 2    | 10.9 Summary of Findings
+ 2813 | Heading 1    | Chapter 11: Conclusion and Future Work
+ 2815 | Heading 2    | Overview
+ 2817 | Heading 2    | 11.1 Conclusion
+ 2831 | Heading 2    | 11.2 Limitations
+ 2839 | Heading 2    | 
+ 2841 | Heading 2    | 11.3 Future Work
+ 2871 | Heading 2    | 11.4 Summary
+ 2893 | Heading 1    | References
+ 2936 | Heading 1    | Appendix
+ 2938 | Heading 2    | Appendix A – User Interface Screenshots
+ 3017 | Heading 2    | Appendix B – Code Documentation

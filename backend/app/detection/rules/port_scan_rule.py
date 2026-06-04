@@ -51,7 +51,11 @@ class PortScanRule(DetectionRule):
                 description=description,
                 severity=Severity.medium,
                 rule_name=self.name,
-                reasoning="Threshold: ≥15 distinct destination ports from one IP within 2 minutes.",
+                attack_type="port_scan",
+                reasoning=(
+                    f"Evidence: {distinct_ports} distinct ports from {event.source_ip} in 2 minutes "
+                    f"(ports include {ports_line})."
+                ),
                 event_id=event.id,
             )
         ]

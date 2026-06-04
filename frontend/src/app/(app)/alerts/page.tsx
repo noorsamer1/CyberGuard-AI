@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { ShieldOff, Sparkles } from "lucide-react";
+import { FileDown, ShieldOff, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { AlertAIInsightDialog } from "@/components/alerts/alert-ai-insight-dialog";
@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, downloadAlertsPortfolioPdf } from "@/lib/api/client";
 import type { AIClassification, Alert, AlertStatus, Paginated } from "@/lib/api/types";
 
 function AIAssessment({ assessment }: { assessment: AIClassification | null }) {
@@ -58,6 +58,7 @@ export default function AlertsPage() {
   const [severity, setSeverity] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [insightAlert, setInsightAlert] = useState<Alert | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["alerts", page, severity, status],
@@ -82,6 +83,18 @@ export default function AlertsPage() {
     }
   }
 
+  async function generatePdf() {
+    setPdfLoading(true);
+    try {
+      await downloadAlertsPortfolioPdf({ severity, status });
+      toast.success("Alert portfolio PDF downloaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "PDF generation failed");
+    } finally {
+      setPdfLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <AlertAIInsightDialog
@@ -102,6 +115,16 @@ export default function AlertsPage() {
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">All alerts</CardTitle>
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={pdfLoading || (data?.total ?? 0) === 0}
+              onClick={() => void generatePdf()}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              {pdfLoading ? "Generating…" : "Generate PDF"}
+            </Button>
             <Select
               value={severity}
               onValueChange={(v) => {

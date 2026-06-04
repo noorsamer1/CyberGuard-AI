@@ -19,9 +19,10 @@ class PrivilegeEscalationRule(DetectionRule):
                 description=f"Suspicious privilege escalation activity was observed for {actor}.",
                 severity=Severity.critical,
                 rule_name=self.name,
+                attack_type="privilege_escalation",
                 reasoning=(
-                    "Range rule: privilege-escalation metadata or suspicious admin-access escalation "
-                    "keywords were observed."
+                    "Evidence: privilege-escalation metadata or admin-access keywords in "
+                    f"{event.raw_log or event.message or 'admin telemetry'}."
                 ),
                 event_id=event.id,
             )

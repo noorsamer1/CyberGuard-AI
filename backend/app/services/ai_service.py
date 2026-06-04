@@ -11,14 +11,41 @@ logger = get_logger(__name__)
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
+ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
+_SEVERITY_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+
+
+def _clamp_suggested_severity(suggested: str, event_severity: str | None) -> str:
+    """Keep AI suggested severity within one step of observed event severity."""
+    if suggested not in ALLOWED_SEVERITIES:
+        return "low"
+    if not event_severity or event_severity not in ALLOWED_SEVERITIES:
+        return suggested
+    suggested_rank = _SEVERITY_RANK[suggested]
+    event_rank = _SEVERITY_RANK[event_severity]
+    if suggested_rank > event_rank + 1:
+        return list(_SEVERITY_RANK.keys())[event_rank + 1]
+    if suggested_rank < event_rank - 1:
+        return list(_SEVERITY_RANK.keys())[max(event_rank - 1, 0)]
+    return suggested
+
+
 def analyze_incident_context(
     incident_title: str,
     incident_summary: str,
     event_snippets: list[dict[str, Any]],
+    deterministic_context: dict[str, Any] | None = None,
 ) -> Optional[dict[str, str]]:
     if not settings.openrouter_api_key:
         logger.info("OpenRouter API key not set; skipping AI analysis")
         return None
+    user_payload: dict[str, Any] = {
+        "incident_title": incident_title,
+        "incident_summary": incident_summary,
+        "related_events": event_snippets[:50],
+    }
+    if deterministic_context:
+        user_payload["deterministic_context"] = deterministic_context
     payload = {
         "model": settings.openrouter_model,
         "messages": [
@@ -26,19 +53,12 @@ def analyze_incident_context(
                 "role": "system",
                 "content": (
                     "You are a senior SOC analyst. Respond with compact JSON only, no markdown. "
-                    "Keys: summary, why_suspicious, remediation, executive_summary, analyst_notes."
+                    "Use ONLY facts from the user JSON. Do not invent hosts, counts, or timelines. "
+                    "Keys: summary, why_suspicious, remediation, executive_summary, analyst_notes, "
+                    "root_cause, impact, prioritized_remediation."
                 ),
             },
-            {
-                "role": "user",
-                "content": json.dumps(
-                    {
-                        "incident_title": incident_title,
-                        "incident_summary": incident_summary,
-                        "related_events": event_snippets[:50],
-                    }
-                ),
-            },
+            {"role": "user", "content": json.dumps(user_payload)},
         ],
         "temperature": 0.2,
     }
@@ -66,6 +86,9 @@ def analyze_incident_context(
                 "remediation": str(parsed.get("remediation", "")),
                 "executive_summary": str(parsed.get("executive_summary", "")),
                 "analyst_notes": str(parsed.get("analyst_notes", "")),
+                "root_cause": str(parsed.get("root_cause", "")),
+                "impact": str(parsed.get("impact", "")),
+                "prioritized_remediation": str(parsed.get("prioritized_remediation", "")),
             }
     except Exception as e:
         logger.warning("AI analysis failed: %s", e)
@@ -138,8 +161,8 @@ def classify_event_context(event_context: dict[str, Any]) -> Optional[dict[str, 
             if attack_type not in ALLOWED_ATTACK_TYPES:
                 attack_type = "unknown"
             severity = str(parsed.get("suggested_severity") or "low").strip().lower()
-            if severity not in ALLOWED_SEVERITIES:
-                severity = "low"
+            event_severity = str(event_context.get("severity") or "").strip().lower()
+            severity = _clamp_suggested_severity(severity, event_severity or None)
             confidence = parsed.get("confidence", 0.0)
             try:
                 confidence_float = max(0.0, min(float(confidence), 1.0))

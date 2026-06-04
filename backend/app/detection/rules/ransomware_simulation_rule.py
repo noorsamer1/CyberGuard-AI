@@ -21,7 +21,11 @@ class RansomwareSimulationRule(DetectionRule):
                 description="The local range target observed safe ransomware-like behavior against dummy files.",
                 severity=Severity.critical,
                 rule_name=self.name,
-                reasoning="Range rule: ransomware simulation metadata, blocked payload, or .locked rename artifact was observed.",
+                attack_type="ransomware",
+                reasoning=(
+                    "Evidence: ransomware simulation metadata or .locked rename artifact in "
+                    f"{event.raw_log or event.message or 'endpoint telemetry'}."
+                ),
                 event_id=event.id,
             )
         ]
